@@ -216,3 +216,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Claude Code
+.claude/
+
+# JetBrains IDE
+.idea/
+
+# Iterative Planner
+plans/*
+!plans/ANCHORS.md

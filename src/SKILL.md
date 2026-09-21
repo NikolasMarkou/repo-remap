@@ -1,6 +1,9 @@
 ---
 name: repo-remap
 description: Rebuild a repository's documentation map by generating self-contained README.md (for humans) and CLAUDE.md (for Claude) in every module, working bottom-up from leaf modules to the repo root. Use this whenever the user asks to remap, re-document, re-index, or re-onboard a repo, refresh or regenerate stale README/CLAUDE files, add per-module docs, make docs self-contained, build a documentation tree, or says anything like "remap this repo", "the docs are out of date", "document every module", "generate CLAUDE.md files across the codebase", or asks for module-level documentation after a large refactor. Also use it when starting work in an unfamiliar repo that has thin or missing docs.
+version: __SKILL_VERSION__
+released: __SKILL_DATE__
+commit: __SKILL_COMMIT__
 ---
 
 # Repo Remap
@@ -39,10 +42,10 @@ flowchart TD
 Run the helper to get modules ordered deepest-first with file counts:
 
 ```bash
-python3 scripts/module_tree.py <repo-root>
+python3 <skill-path>/scripts/module_tree.py <repo-root>
 ```
 
-It prints qualifying modules in processing order, plus skipped ones. If the script is unavailable, do the same by hand: list directories, count direct files, discard ignored paths, sort by path depth descending.
+`<skill-path>` is the directory holding this SKILL.md (for example `~/.claude/skills/repo-remap`). It prints qualifying modules in processing order, plus skipped ones. If the script is unavailable, do the same by hand: list directories, count direct files, discard ignored paths, sort by path depth descending.
 
 Confirm the module list with the user before writing if the repo is large (more than roughly 25 qualifying modules), so they can exclude areas they do not want touched.
 

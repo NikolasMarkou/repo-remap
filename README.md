@@ -1,7 +1,8 @@
 # Repo Remap
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Skill](https://img.shields.io/badge/Skill-repo--remap-green.svg)](src/SKILL.md)
+[![Skill](https://img.shields.io/badge/Skill-v1.0.0-green.svg)](CHANGELOG.md)
+[![Tests](https://img.shields.io/badge/tests-75%20passing-brightgreen.svg)](src/scripts/test_module_tree.py)
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](src/scripts/module_tree.py)
 [![Sponsored by Electi](https://img.shields.io/badge/Sponsored%20by-Electi-red.svg)](https://www.electiconsulting.com)
 
@@ -79,21 +80,32 @@ Reach for it when the map of the codebase is missing or wrong. Skip it when you 
 
 **Requires**: Python 3.8+ for the mapping script. Standard library only, no `pip install`.
 
-### Option 1: Clone and install
+### Option 1: Zip package (recommended)
+
+Download `repo-remap-v*.zip` from the [GitHub Releases](https://github.com/NikolasMarkou/repo-remap/releases) page and unpack it into your skills directory:
+
+```bash
+unzip repo-remap-v*.zip -d ~/.claude/skills/
+```
+
+You get `~/.claude/skills/repo-remap/` with `SKILL.md`, `scripts/module_tree.py`, and the docs. Nothing else is needed at runtime. For a project-local install, unpack into `.claude/skills/` inside that project instead.
+
+### Option 2: Single-file skill
+
+Download `repo-remap-combined.md` from the same release and paste it into your custom instructions. It is the protocol only: the mapping script is not included, so Claude builds the module list by hand as described in Step 0. Everything else works the same.
+
+### Option 3: Clone and build
 
 ```bash
 git clone https://github.com/NikolasMarkou/repo-remap.git
-mkdir -p ~/.claude/skills/repo-remap
-cp -r repo-remap/src/* ~/.claude/skills/repo-remap/
+cd repo-remap
+make build
+cp -r build/repo-remap ~/.claude/skills/
 ```
 
-The skill is `SKILL.md` plus `scripts/module_tree.py`. Nothing else is needed at runtime.
+`make build` stamps the version, date and commit into `SKILL.md` and copies only the shipped files. To update a clone-based install later, use `make sync-skill`: it prunes the installed scripts before copying, so files deleted from the repo do not linger.
 
-### Option 2: Project-local install
-
-Drop the same contents under `.claude/skills/repo-remap/` inside a single project if you only want it there.
-
-### Option 3: Manual mapping
+### Manual mapping
 
 The skill degrades cleanly. If the script is unavailable, the protocol says to build the same module list by hand: list directories, count direct files, discard ignored paths, sort by depth descending.
 
@@ -112,7 +124,7 @@ One full run, condensed. This is the shape every remap takes.
 **Claude (Step 0: map)** runs the helper:
 
 ```bash
-python3 scripts/module_tree.py .
+python3 ~/.claude/skills/repo-remap/scripts/module_tree.py .
 ```
 
 Output, deepest first:
@@ -212,7 +224,7 @@ flowchart TD
 | **Pass 2** | Write both files for every module whose children are all documented. Summarize children, do not copy them. | Own direct source files, children's finished docs, skipped child directories |
 | **Pass 3** | Repeat Pass 2 one level at a time until the root is written. | Same as Pass 2, ending at the whole system |
 
-**Ignored by default**: `.git`, `.hg`, `.svn`, `.idea`, `.vscode`, `__pycache__`, `node_modules`, `bower_components`, `vendor`, `venv`, `.venv`, `env`, `virtualenv`, `dist`, `build`, `out`, `target`, `.next`, `.nuxt`, `.svelte-kit`, `coverage`, `.terraform`, `.gradle`, `.tox`, `.cache`, `site-packages`, and caches such as `.pytest_cache`, `.mypy_cache`, `.ruff_cache`. Dotted directories are skipped except `.github`. Compiled and generated files (`.pyc`, `.class`, `.o`, `.so`, `.dll`, `.dylib`, `.log`, `.lock`, `.map`, `.min.js`, `.min.css`, `.snap`) do not count toward the file total.
+**Ignored by default**: `.git`, `.hg`, `.svn`, `.idea`, `.vscode`, `__pycache__`, `node_modules`, `bower_components`, `vendor`, `venv`, `.venv`, `env`, `virtualenv`, `dist`, `build`, `out`, `target`, `.next`, `.nuxt`, `.svelte-kit`, `coverage`, `.terraform`, `.gradle`, `.tox`, `.cache`, `site-packages`, and caches such as `.pytest_cache`, `.mypy_cache`, `.ruff_cache`. Dotted directories are skipped except `.github`. Compiled and generated files (`.pyc`, `.pyo`, `.class`, `.o`, `.so`, `.dll`, `.dylib`, `.log`, `.lock`, `.map`, `.min.js`, `.min.css`, `.snap`) do not count toward the file total.
 
 ---
 
@@ -335,13 +347,25 @@ These apply to every generated file, and are overridden only when you explicitly
 
 ```
 repo-remap/
-├── README.md                   # this file
-├── LICENSE                     # Apache License 2.0
+├── README.md                       # this file
+├── LICENSE                         # Apache License 2.0
+├── VERSION                         # single source of truth for the version
+├── TEST_COUNT                      # live test count, checked by make test
+├── CHANGELOG.md                    # version history, top entry must match VERSION
+├── CLAUDE.md                       # guidance for working on this repo
+├── Makefile                        # Unix/Linux/macOS build (reads VERSION)
+├── build.ps1                       # Windows PowerShell 7+ build (reads VERSION)
 └── src/
-    ├── SKILL.md                # the protocol: definitions, passes, formats, checklist
+    ├── SKILL.md                    # the protocol: definitions, passes, formats, checklist
     └── scripts/
-        └── module_tree.py      # module mapper, prints processing order deepest first
+        ├── module_tree.py          # module mapper, prints processing order deepest first
+        ├── test_module_tree.py     # unittest suite for the mapper
+        ├── check_*.py              # parity gates run by make validate and make test
+        ├── test_check_*.py         # one suite per gate
+        └── test_build_channels.py  # keeps Makefile and build.ps1 in lockstep
 ```
+
+The package built by `make build` contains only `SKILL.md`, `scripts/module_tree.py`, `README.md`, `LICENSE`, `CHANGELOG.md` and `VERSION`. Gate and test scripts stay in the repo.
 
 For the complete protocol specification, see [`src/SKILL.md`](src/SKILL.md).
 
@@ -349,14 +373,62 @@ For the complete protocol specification, see [`src/SKILL.md`](src/SKILL.md).
 
 ## Contributing
 
-The skill is a single markdown file and a single script with no dependencies. Changes to either should keep them in agreement:
+The skill is a single markdown file and a single script with no dependencies. The repo around them keeps the two in agreement mechanically.
 
+**Requires**: Python 3.8+ and GNU make, or PowerShell 7+ on Windows. No pip install.
+
+<details>
+<summary><strong>Run the tests</strong></summary>
+
+```bash
+make test
+```
+
+This compiles every script, runs unittest discovery over `src/scripts/test_*.py`, then checks that `TEST_COUNT` equals the live pass count. The same suite by hand:
+
+```bash
+python3 -m unittest discover -s src/scripts -p "test_*.py" -v
+```
+
+75 tests across 6 suites: module_tree 18, check_readme_parity 12, check_changelog_parity 10, check_ignore_parity 11, check_test_count 11, build_channels 13. The per-suite numbers are hand-maintained prose. If they drift, `TEST_COUNT` and the badge remain the machine-checked source of truth.
+
+</details>
+
+<details>
+<summary><strong>Build and package</strong></summary>
+
+| Unix/Linux/macOS | Windows (PowerShell 7+) | What it does |
+| --- | --- | --- |
+| `make build` | `.\build.ps1 build` | Stage `build/repo-remap/` with version, date and commit stamped into `SKILL.md` |
+| `make build-combined` | `.\build.ps1 build-combined` | Single-file `SKILL.md` for pasting into context |
+| `make package` | `.\build.ps1 package` | Validate, build, zip into `dist/` (default target) |
+| `make package-combined` | `.\build.ps1 package-combined` | Validate, then copy the single file into `dist/` |
+| `make package-tar` | `.\build.ps1 package-tar` | Validate, build, tarball into `dist/` |
+| `make validate` | `.\build.ps1 validate` | Frontmatter, script citations, README, CHANGELOG and ignore-list parity |
+| `make lint` | `.\build.ps1 lint` | `py_compile` every script |
+| `make test` | `.\build.ps1 test` | Lint, tests, `TEST_COUNT` gate |
+| `make clean` | `.\build.ps1 clean` | Remove `build/` and `dist/` |
+| `make list` | `.\build.ps1 list` | Show package contents |
+| `make sync-skill` | `.\build.ps1 sync-skill` | Deploy the repo source to `~/.claude/skills/repo-remap`, pruning first |
+
+The Windows channel requires PowerShell 7 or later and is kept in lockstep with the Makefile by `src/scripts/test_build_channels.py`.
+
+</details>
+
+<details>
+<summary><strong>Validation checklist before submitting changes</strong></summary>
+
+- [ ] `make validate` and `make test` pass
 - [ ] Definitions in `src/SKILL.md` match the qualifying logic in `module_tree.py`
-- [ ] The ignore lists in this README match `IGNORED_DIRS`, `IGNORED_FILES`, and `IGNORED_SUFFIXES`
-- [ ] `src/SKILL.md` has `name:` and `description:` in YAML frontmatter
+- [ ] The "Ignored by default" paragraph in this README matches `IGNORED_DIRS` and `IGNORED_SUFFIXES` (gated by `check_ignore_parity.py`)
+- [ ] `src/SKILL.md` keeps `name:`, `description:` and the `__SKILL_VERSION__`, `__SKILL_DATE__`, `__SKILL_COMMIT__` placeholders in its frontmatter
+- [ ] The version badge above matches `VERSION` and the tests badge matches `TEST_COUNT` (gated by `check_readme_parity.py`)
+- [ ] The top `CHANGELOG.md` entry matches `VERSION` (gated by `check_changelog_parity.py`)
+- [ ] `Makefile` and `build.ps1` were changed together if either was touched
 - [ ] The workflow diagram matches the pass descriptions
-- [ ] `python3 -m py_compile src/scripts/module_tree.py` passes
 - [ ] Generated output still obeys the style constraints
+
+</details>
 
 ---
 
