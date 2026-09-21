@@ -1,7 +1,7 @@
 # Repo Remap
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Skill](https://img.shields.io/badge/Skill-v1.0.0-green.svg)](CHANGELOG.md)
+[![Skill](https://img.shields.io/badge/Skill-v1.0.1-green.svg)](CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-75%20passing-brightgreen.svg)](src/scripts/test_module_tree.py)
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](src/scripts/module_tree.py)
 [![Sponsored by Electi](https://img.shields.io/badge/Sponsored%20by-Electi-red.svg)](https://www.electiconsulting.com)
@@ -131,33 +131,39 @@ Output, deepest first:
 
 ```
 repo root: /home/dev/payments-api
-qualifying modules: 9   skipped dirs: 4
+qualifying modules: 8   skipped dirs: 1
 
 PROCESSING ORDER (deepest first)
 
 -- depth 2 --
-  src/adapters/stripe          files=6    leaf [README]
   src/adapters/ledger          files=4    leaf
+  src/adapters/stripe          files=6    leaf [README]
 
 -- depth 1 --
   src/adapters                 files=1    parent of 2
   src/core                     files=7    leaf [README+CLAUDE]
   tests/integration            files=5    leaf
 
+-- depth 0 --
+  src                          files=0    parent of 2
+  tests                        files=0    parent of 1
+
 -- root --
-  .                            files=3    parent of 3 [README]
+  .                            files=3    parent of 2 [README]
 
 SKIPPED (documented by nearest qualifying ancestor)
   src/adapters/stripe/fixtures files=2
 ```
 
-Nine modules is under the confirmation threshold, so Claude proceeds.
+Eight modules is under the confirmation threshold, so Claude proceeds.
 
-**Pass 1 (leaves)** starts at `src/adapters/stripe`. Every direct source file is read in full: public API, entry points, side effects, error paths. The existing README there is read too, and treated as a set of claims. Two of them still hold, one describes a retry policy that was removed last year, so it goes. A new `README.md` and a new `CLAUDE.md` are written and the old file is overwritten completely. Then `src/adapters/ledger`, then `src/core`, then `tests/integration`.
+**Pass 1 (leaves)** starts at `src/adapters/stripe`. Every direct source file is read in full: public API, entry points, side effects, error paths. The existing README there is read too, and treated as a set of claims. Two of them still hold, one describes a retry policy that was removed last year, so it goes. A new `README.md` and a new `CLAUDE.md` are written and the old file is overwritten completely. Then `src/adapters/ledger`, `src/core` and `tests/integration`, in any order, since no leaf depends on another.
 
 **Pass 2 (one level up)** reaches `src/adapters`, whose children are now documented. Claude reads the module's own single file, then the finished `README.md` and `CLAUDE.md` of both children, then the skipped `fixtures/` directory, since nothing else will cover it. The parent docs state what each adapter is for and how the pieces connect. They do not restate the Stripe client's retry semantics: that already lives one level down, in full.
 
-**Pass 3 (root)** writes the repo root last, from the finished docs of `src/adapters`, `src/core`, and `tests/integration`. It describes what the system is, how to run it, how the top-level pieces fit, and where the important behavior lives.
+The same pass then writes `src`, from `src/adapters` and `src/core`, and `tests`, from `tests/integration`. Neither holds source files of its own; they qualify only through their children.
+
+**Pass 3 (root)** writes the repo root last, from the finished docs of `src` and `tests` plus the three files at the top level. It describes what the system is, how to run it, how the top-level pieces fit, and where the important behavior lives.
 
 **Reporting back** is a file list grouped by pass. No narrative, no summary of what was learned, no commentary about the documentation itself.
 
@@ -347,27 +353,26 @@ These apply to every generated file, and are overridden only when you explicitly
 
 ```
 repo-remap/
-├── README.md                       # this file
-├── LICENSE                         # Apache License 2.0
-├── VERSION                         # single source of truth for the version
-├── TEST_COUNT                      # live test count, checked by make test
-├── CHANGELOG.md                    # version history, top entry must match VERSION
-├── CLAUDE.md                       # guidance for working on this repo
-├── Makefile                        # Unix/Linux/macOS build (reads VERSION)
-├── build.ps1                       # Windows PowerShell 7+ build (reads VERSION)
+├── LICENSE                             # Apache License 2.0
+├── VERSION                             # single source of truth for the version
+├── TEST_COUNT                          # live test count, checked by make test
+├── CHANGELOG.md                        # version history, top entry must match VERSION
+├── Makefile                            # Unix/Linux/macOS build (reads VERSION)
+├── build.ps1                           # Windows PowerShell 7+ build (reads VERSION)
 └── src/
-    ├── SKILL.md                    # the protocol: definitions, passes, formats, checklist
+    ├── SKILL.md                        # the protocol: definitions, passes, formats, checklist
     └── scripts/
-        ├── module_tree.py          # module mapper, prints processing order deepest first
-        ├── test_module_tree.py     # unittest suite for the mapper
-        ├── check_*.py              # parity gates run by make validate and make test
-        ├── test_check_*.py         # one suite per gate
-        └── test_build_channels.py  # keeps Makefile and build.ps1 in lockstep
+        ├── module_tree.py              # module mapper, prints processing order deepest first
+        ├── check_readme_parity.py      # gate: badges vs VERSION and TEST_COUNT (make validate)
+        ├── check_changelog_parity.py   # gate: top CHANGELOG entry vs VERSION (make validate)
+        ├── check_ignore_parity.py      # gate: ignore paragraph vs module_tree.py (make validate)
+        ├── check_test_count.py         # gate: TEST_COUNT vs live suite (make test only)
+        ├── test_module_tree.py         # unittest suite for the mapper
+        ├── test_check_*.py             # one suite per gate
+        └── test_build_channels.py      # keeps Makefile and build.ps1 in lockstep
 ```
 
-The package built by `make build` contains only `SKILL.md`, `scripts/module_tree.py`, `README.md`, `LICENSE`, `CHANGELOG.md` and `VERSION`. Gate and test scripts stay in the repo.
-
-For the complete protocol specification, see [`src/SKILL.md`](src/SKILL.md).
+The package built by `make build` contains only `SKILL.md`, `scripts/module_tree.py`, `README.md`, `LICENSE`, `CHANGELOG.md` and `VERSION`. Gate and test scripts stay in the repo. The complete protocol is `src/SKILL.md`.
 
 ---
 
@@ -412,6 +417,13 @@ python3 -m unittest discover -s src/scripts -p "test_*.py" -v
 | `make sync-skill` | `.\build.ps1 sync-skill` | Deploy the repo source to `~/.claude/skills/repo-remap`, pruning first |
 
 The Windows channel requires PowerShell 7 or later and is kept in lockstep with the Makefile by `src/scripts/test_build_channels.py`.
+
+Things to know about the build:
+
+- `build`, `build-combined`, `package*` and `list` call `git rev-parse --short HEAD`, so they need a git checkout.
+- The Makefile edits files with `sed -i "..."`, the GNU form. BSD `sed` on stock macOS expects a suffix argument after `-i`.
+- `make test` runs the suite twice: once directly, then again inside `check_test_count.py`.
+- `sync-skill` byte-compares `SKILL.md`, `module_tree.py` and `VERSION` after copying. `README.md`, `LICENSE` and `CHANGELOG.md` are copied but not compared.
 
 </details>
 
