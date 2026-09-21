@@ -27,12 +27,14 @@ $SkillFile = "src/SKILL.md"
 $ScriptFiles = @("src/scripts/module_tree.py")
 $DocFiles = @("README.md", "LICENSE", "CHANGELOG.md", "VERSION")
 $LintFiles = @(
+    "src/scripts/check_agent_wiring.py",
     "src/scripts/check_changelog_parity.py",
     "src/scripts/check_ignore_parity.py",
     "src/scripts/check_readme_parity.py",
     "src/scripts/check_test_count.py",
     "src/scripts/module_tree.py",
     "src/scripts/test_build_channels.py",
+    "src/scripts/test_check_agent_wiring.py",
     "src/scripts/test_check_changelog_parity.py",
     "src/scripts/test_check_ignore_parity.py",
     "src/scripts/test_check_readme_parity.py",
@@ -46,8 +48,8 @@ function Show-Help {
     Write-Host "Usage: .\build.ps1 [command]"
     Write-Host ""
     Write-Host "Commands:"
-    Write-Host "  build            - Build skill package structure"
-    Write-Host "  build-combined   - Build single-file skill (SKILL.md only)"
+    Write-Host "  build            - Build skill package (SKILL.md, scripts/, agents/, references/)"
+    Write-Host "  build-combined   - Build single-file skill (SKILL.md + inlined references and agents)"
     Write-Host "  package          - Create zip package"
     Write-Host "  package-combined - Create single-file skill in dist/"
     Write-Host "  package-tar      - Create tarball package"
@@ -56,7 +58,7 @@ function Show-Help {
     Write-Host "  test             - Run tests and the TEST_COUNT gate"
     Write-Host "  clean            - Remove build artifacts"
     Write-Host "  list             - Show package contents"
-    Write-Host "  sync-skill       - Opt-in: deploy repo source to local installed skill (writes to `$HOME)"
+    Write-Host "  sync-skill       - Opt-in: deploy skill (with agents/) to ~/.claude/skills, rr-* agents also to ~/.claude/agents"
     Write-Host "  help             - Show this help"
     Write-Host ""
     Write-Host "Skill: $SkillName v$Version"
@@ -73,13 +75,29 @@ function Substitute-Placeholders {
     Set-Content -Path $Path -Value $content -Encoding utf8 -NoNewline
 }
 
+# src/agents/ and src/references/ also hold this repo's own per-module README.md and CLAUDE.md.
+# Those are repo docs, not skill content: agents are rr-*.md only, references exclude both docs.
+# Keep in lockstep with the Makefile's AGENT_FILES and REFERENCE_FILES.
+function Get-ReferenceFiles {
+    # Leading comma: return the array as one object so an empty or one-item set stays an array.
+    return ,@(Get-ChildItem src/references -Filter *.md -File | Where-Object { $_.Name -notin @('README.md','CLAUDE.md') } | Sort-Object Name)
+}
+
+function Get-AgentFiles {
+    return ,@(Get-ChildItem src/agents -Filter rr-*.md -File | Sort-Object Name)
+}
+
 function Invoke-Build {
     Write-Host "Building skill package: $SkillName"
     $target = Join-Path $BuildDir $SkillName
-    New-Item -ItemType Directory -Force -Path (Join-Path $target "scripts") | Out-Null
+    foreach ($d in @("scripts", "agents", "references")) {
+        New-Item -ItemType Directory -Force -Path (Join-Path $target $d) | Out-Null
+    }
     Copy-Item $SkillFile (Join-Path $target "SKILL.md") -Force
     Substitute-Placeholders (Join-Path $target "SKILL.md")
     foreach ($f in $ScriptFiles) { Copy-Item $f (Join-Path $target "scripts") -Force }
+    foreach ($f in (Get-AgentFiles)) { Copy-Item $f.FullName (Join-Path $target "agents") -Force }
+    foreach ($f in (Get-ReferenceFiles)) { Copy-Item $f.FullName (Join-Path $target "references") -Force }
     foreach ($f in $DocFiles) { Copy-Item $f $target -Force }
     Write-Host "Build complete: $target"
 }
@@ -93,12 +111,28 @@ function Invoke-BuildCombined {
     # first bytes. Keep byte-identical to the Makefile's note: test_build_channels.py pins the pair.
     $note = @(
         "> **Note**: This combined file is a PASTE-INTO-CONTEXT artifact, not an installed skill.",
-        "> It ships no scripts, so ``python3 <skill-path>/scripts/module_tree.py`` is not runnable",
-        "> as written. Use the manual mapping fallback in Step 0: list directories, count direct",
-        "> files, discard ignored paths, sort by path depth descending. The zip or tarball",
-        "> package includes the script."
+        "> It ships no scripts and no installed agents, so ``python3 <skill-path>/scripts/module_tree.py``",
+        "> is not runnable as written. Use the manual mapping fallback in Step 0 instead: list directories,",
+        "> count direct files, discard ignored paths, sort by path depth descending. The references and agent",
+        "> definitions are inlined above, so run the passes in-thread, or spawn general-purpose subagents",
+        "> told to follow the inlined rr-* section for their role. The zip or tarball package includes",
+        "> the script and the agent definitions."
     )
     $body = Get-Content $out -Raw -Encoding utf8
+    # Each inlined file: blank line, ---, blank line, <!-- file: <dir>/<name> -->, blank line, body.
+    # Keep order (references, then agents) and framing byte-identical to the Makefile's build-combined.
+    $groups = @(
+        @("references", "src/references/*.md", (Get-ReferenceFiles)),
+        @("agents", "src/agents/rr-*.md", (Get-AgentFiles)))
+    foreach ($g in $groups) {
+        $parts = @($g[2])
+        if ($parts.Count -eq 0) { Write-Host "ERROR: no files match $($g[1])" -ForegroundColor Red; exit 1 }
+        foreach ($p in $parts) {
+            $rel = "$($g[0])/$($p.Name)"
+            $text = Get-Content $p.FullName -Raw -Encoding utf8
+            $body += "`n---`n`n<!-- file: $rel -->`n`n" + $text
+        }
+    }
     $body += "`n---`n`n" + ($note -join "`n") + "`n"
     Set-Content -Path $out -Value $body -Encoding utf8 -NoNewline
     Substitute-Placeholders $out
@@ -154,8 +188,32 @@ function Invoke-Validate {
         foreach ($ref in $refs) {
             if (-not (Test-Path "src/$ref")) { $errors += "$SkillFile cites $ref but src/$ref not found" }
         }
+        # Every references/<x>.md and agents/rr-<x>.md cited in SKILL.md must exist under src/
+        Write-Host "Checking reference citations..."
+        $refs = [regex]::Matches($skill, "references/[a-z0-9_-]+\.md") | ForEach-Object { $_.Value } | Sort-Object -Unique
+        foreach ($ref in $refs) {
+            if (-not (Test-Path "src/$ref")) { $errors += "$SkillFile cites $ref but src/$ref not found" }
+        }
+        Write-Host "Checking agent citations..."
+        $refs = [regex]::Matches($skill, "agents/rr-[a-z-]+\.md") | ForEach-Object { $_.Value } | Sort-Object -Unique
+        foreach ($ref in $refs) {
+            if (-not (Test-Path "src/$ref")) { $errors += "$SkillFile cites $ref but src/$ref not found" }
+        }
     }
     if (-not (Test-Path "src/scripts")) { $errors += "src/scripts/ directory not found" }
+    if (-not (Test-Path "src/references")) { $errors += "src/references/ directory not found" }
+    if (-not (Test-Path "src/agents")) { $errors += "src/agents/ directory not found" }
+    else {
+        Write-Host "Checking agent frontmatter..."
+        $agents = Get-AgentFiles
+        if ($agents.Count -eq 0) { $errors += "src/agents/ has no agent definitions" }
+        foreach ($a in $agents) {
+            $agentText = Get-Content $a.FullName -Raw -Encoding utf8
+            foreach ($key in @("name", "description", "tools")) {
+                if ($agentText -notmatch "(?m)^${key}:") { $errors += "src/agents/$($a.Name) missing '$key' in frontmatter" }
+            }
+        }
+    }
     Write-Host "Checking README badge parity (version + test count)..."
     & $Python src/scripts/check_readme_parity.py
     if ($LASTEXITCODE -ne 0) { $errors += "check_readme_parity.py failed" }
@@ -165,6 +223,9 @@ function Invoke-Validate {
     Write-Host "Checking ignore-list parity (README <-> module_tree.py)..."
     & $Python src/scripts/check_ignore_parity.py
     if ($LASTEXITCODE -ne 0) { $errors += "check_ignore_parity.py failed" }
+    Write-Host "Checking agent wiring (SKILL.md <-> agents/ <-> references/)..."
+    & $Python src/scripts/check_agent_wiring.py
+    if ($LASTEXITCODE -ne 0) { $errors += "check_agent_wiring.py failed" }
     if ($errors.Count -gt 0) {
         foreach ($e in $errors) { Write-Host "ERROR: $e" -ForegroundColor Red }
         exit 1
@@ -208,24 +269,52 @@ function Invoke-List {
 
 function Invoke-SyncSkill {
     $install = Join-Path $HOME ".claude/skills/$SkillName"
+    # Shared user-level agents dir: prune and compare ONLY rr-*.md there, never other agents.
+    $agentInstall = Join-Path $HOME ".claude/agents"
+    # Skill-owned agents dir: SKILL.md reads <skill-path>/agents/rr-*.md, so rr-*.md goes to both.
+    $skillAgents = Join-Path $install "agents"
     Write-Host "Syncing repo source to local installed skill: $install"
-    New-Item -ItemType Directory -Force -Path (Join-Path $install "scripts") | Out-Null
+    foreach ($d in @((Join-Path $install "scripts"), (Join-Path $install "references"), $skillAgents, $agentInstall)) {
+        New-Item -ItemType Directory -Force -Path $d | Out-Null
+    }
     # Prune before copy: a copy-only sync leaves repo-deleted files behind forever.
     Get-ChildItem (Join-Path $install "scripts") -Filter "*.py" -ErrorAction SilentlyContinue | Remove-Item -Force
+    Get-ChildItem (Join-Path $install "references") -Filter "*.md" -ErrorAction SilentlyContinue | Remove-Item -Force
+    Get-ChildItem $skillAgents -Filter "*.md" -ErrorAction SilentlyContinue | Remove-Item -Force
+    Get-ChildItem $agentInstall -Filter "rr-*.md" -ErrorAction SilentlyContinue | Remove-Item -Force
     Copy-Item $SkillFile (Join-Path $install "SKILL.md") -Force
     foreach ($f in $ScriptFiles) { Copy-Item $f (Join-Path $install "scripts") -Force }
+    foreach ($f in (Get-ReferenceFiles)) { Copy-Item $f.FullName (Join-Path $install "references") -Force }
+    foreach ($f in (Get-AgentFiles)) { Copy-Item $f.FullName $skillAgents -Force }
+    foreach ($f in (Get-AgentFiles)) { Copy-Item $f.FullName $agentInstall -Force }
     foreach ($f in $DocFiles) { Copy-Item $f $install -Force }
     $leaked = Get-ChildItem (Join-Path $install "scripts") -Include "test_*.py", "check_*.py" -Recurse
     if ($leaked) { Write-Host "ERROR: sync-skill shipped dev-only scripts into the install" -ForegroundColor Red; exit 1 }
-    foreach ($pair in @(
+    $pairs = @(
         @($SkillFile, (Join-Path $install "SKILL.md")),
         @("src/scripts/module_tree.py", (Join-Path $install "scripts/module_tree.py")),
-        @("VERSION", (Join-Path $install "VERSION")))) {
+        @("VERSION", (Join-Path $install "VERSION")))
+    # references/: the installed file set must equal Get-ReferenceFiles (no extra name, none
+    # missing), then each file is compared. src/references/ README.md and CLAUDE.md never ship.
+    $srcRefs = @(foreach ($f in (Get-ReferenceFiles)) { $f.Name } | Sort-Object)
+    $dstRefs = @(Get-ChildItem (Join-Path $install "references") -File | ForEach-Object { $_.Name } | Sort-Object)
+    if (($srcRefs -join "|") -ne ($dstRefs -join "|")) { Write-Host "ERROR: sync diff mismatch: references/" -ForegroundColor Red; exit 1 }
+    foreach ($n in $srcRefs) { $pairs += ,@("src/references/$n", (Join-Path $install "references/$n")) }
+    # Skill agents/: the installed file set must equal Get-AgentFiles, then each file is compared.
+    $srcAgents = @(foreach ($f in (Get-AgentFiles)) { $f.Name } | Sort-Object)
+    $dstAgents = @(Get-ChildItem $skillAgents -File | ForEach-Object { $_.Name } | Sort-Object)
+    if (($srcAgents -join "|") -ne ($dstAgents -join "|")) { Write-Host "ERROR: sync diff mismatch: agents/" -ForegroundColor Red; exit 1 }
+    foreach ($agentFile in (Get-AgentFiles)) {
+        $pairs += ,@("src/agents/$($agentFile.Name)", (Join-Path $skillAgents $agentFile.Name))
+        $pairs += ,@("src/agents/$($agentFile.Name)", (Join-Path $agentInstall $agentFile.Name))
+    }
+    foreach ($pair in $pairs) {
+        if (-not (Test-Path $pair[1])) { Write-Host "ERROR: sync diff mismatch: $($pair[0])" -ForegroundColor Red; exit 1 }
         $a = Get-Content $pair[0] -Raw -Encoding utf8
         $b = Get-Content $pair[1] -Raw -Encoding utf8
         if ($a -ne $b) { Write-Host "ERROR: sync diff mismatch: $($pair[0])" -ForegroundColor Red; exit 1 }
     }
-    Write-Host "Sync verified (SKILL.md, module_tree.py, VERSION)." -ForegroundColor Green
+    Write-Host "Sync verified (SKILL.md, module_tree.py, VERSION, references/, agents/ in skill and ~/.claude/agents/rr-*.md)." -ForegroundColor Green
 }
 
 switch ($Command.ToLower()) {

@@ -4,6 +4,23 @@ All notable changes to the Repo Remap project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.1.0] - 2026-09-21
+
+**Subagent architecture.** The skill now runs as an orchestrator that hands every read and every doc write to a subagent, so the main context holds only the module list and short replies.
+
+### Added
+
+- `src/agents/`: `rr-orchestrator` (Step 0, scheduling, dispatch, retries), `rr-leaf-writer` (Pass 1), `rr-parent-writer` (Pass 2 and 3), `rr-verifier` (read-only check, `sonnet`). Workers cannot spawn agents.
+- `src/references/`: `readme-format.md`, `claude-format.md`, `style.md`, moved out of `SKILL.md` so each worker reads only the rules it needs.
+- `SKILL.md` sections: Orchestrator role assumption, Sub-agent architecture, Dispatch rules (spawn prompt contract, 5-line replies, parallel dispatch by depth, verifier retries, `general-purpose` and in-thread fallbacks), References.
+- Gate `check_agent_wiring.py` with 13 tests: agent frontmatter, worker spawn ban, orchestrator wiring, dangling agent and reference citations, verifier model.
+- Build channels ship `agents/` and `references/`, inline both in the combined file, validate cited references and agent frontmatter, and `sync-skill` installs `rr-*.md` into `~/.claude/agents/` with prune and diff. Only `rr-*.md` agents and the three reference files ship; module docs in those folders do not. `sync-skill` also installs the agents under the skill dir, where `SKILL.md` reads them. 14 new build-channel tests.
+
+### Changed
+
+- `SKILL.md` Workflow names the agent for each pass. The README.md and CLAUDE.md formats, style and self-containment rules now live in `references/`.
+- Test count 75 to 102.
+
 ## [1.0.1] - 2026-09-21
 
 **Documentation remap.** The repository's own docs were regenerated with the skill, bottom-up.

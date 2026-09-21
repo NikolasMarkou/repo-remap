@@ -1,29 +1,13 @@
 # repo-remap
 
 Path: `.` (repo root)
-Purpose: Build, version, gate and test the Repo Remap Claude Code skill, which rebuilds a repo's docs bottom-up as self-contained `README.md` (people) and `CLAUDE.md` (Claude) files.
+Purpose: Build, version, gate and test the Repo Remap Claude Code skill, which rebuilds a repo's docs bottom-up as self-contained `README.md` (people) and `CLAUDE.md` (Claude) files, run by an orchestrator and three subagents.
 
 ## Scope
 
-The skill is one protocol file (`src/SKILL.md`) plus one Python script (`src/scripts/module_tree.py`). Leaves are documented first from their source; each parent is written from its children's finished docs. Use cases: stale docs after a refactor, repos with no per-module docs, onboarding a person or an agent.
+The skill is a protocol (`src/SKILL.md`), four agent definitions (`src/agents/rr-*.md`), three format rule files (`src/references/*.md`) and one Python mapper (`src/scripts/module_tree.py`). Leaves are documented first from their source; each parent is written from its children's finished docs; every module is checked by a verifier. Use cases: stale docs after a refactor, repos with no per-module docs, onboarding a person or an agent.
 
 Here at the root: build channels, version and test-count files, changelog, license, user README.
-
-| Path | What it is |
-| --- | --- |
-| `src/SKILL.md` | Protocol: frontmatter, Definitions, Workflow (Step 0, Pass 1 to 3), Self-containment, README.md and CLAUDE.md formats, Style constraints, Reporting back, Checklist |
-| `src/scripts/module_tree.py` | Shipped mapper: prints qualifying modules deepest first. Stdlib only, read-only |
-| `src/scripts/check_*.py` | Dev-only gates (4) |
-| `src/scripts/test_*.py` | Dev-only unittest suites (6, 75 tests) |
-| `README.md` | User docs. Carries gated badges and the gated "Ignored by default" paragraph. Shipped |
-| `VERSION` | Single source of truth for the version (`1.0.0`). Shipped |
-| `TEST_COUNT` | Live unittest pass count (`75`) |
-| `CHANGELOG.md` | Keep a Changelog. Top entry must equal `VERSION`. No `[Unreleased]` section. Shipped |
-| `LICENSE` | Apache 2.0. Shipped |
-| `Makefile` | Unix/Linux/macOS build channel |
-| `build.ps1` | Windows PowerShell 7+ build channel |
-
-Only `SKILL.md`, `scripts/module_tree.py`, `README.md`, `LICENSE`, `CHANGELOG.md` and `VERSION` ship.
 
 ## Architecture
 
@@ -33,14 +17,46 @@ flowchart TD
     MK -->|validate| G1[check_readme_parity.py]
     MK -->|validate| G2[check_changelog_parity.py]
     MK -->|validate| G3[check_ignore_parity.py]
+    MK -->|validate| G5[check_agent_wiring.py]
     MK -->|test| L[py_compile lint list] --> U[unittest discover src/scripts test_*.py] --> G4[check_test_count.py]
-    MK -->|build| B[build/repo-remap/: SKILL.md with placeholders substituted, scripts/module_tree.py, docs]
+    MK -->|build| B[build/repo-remap/: SKILL.md stamped, scripts/module_tree.py, agents/rr-*.md, references/*.md, docs]
     B -->|package| Z[dist/repo-remap-vX.Y.Z.zip or .tar.gz]
-    MK -->|sync-skill| I[~/.claude/skills/repo-remap]
+    MK -->|build-combined| C[build/repo-remap-combined.md: SKILL.md + references + agents inlined]
+    MK -->|sync-skill| I[~/.claude/skills/repo-remap incl. agents/, references/]
+    MK -->|sync-skill rr-*.md| A[~/.claude/agents/]
     G3 -->|imports IGNORED_DIRS, IGNORED_SUFFIXES| MT[module_tree.py]
+    G5 -->|reads| SK[SKILL.md, agents/*.md, references/]
 ```
 
-Runtime (installed skill): Claude reads `SKILL.md`, Step 0 runs `python3 <skill-path>/scripts/module_tree.py <repo-root>`, then Pass 1 writes leaves deepest first, Pass 2 and 3 write parents up to the root.
+Runtime (installed skill):
+
+1. Main thread reads `SKILL.md`, then `<skill-path>/agents/rr-orchestrator.md`, and becomes the orchestrator. It must not spawn another orchestrator.
+2. Step 0: `python3 <skill-path>/scripts/module_tree.py <repo-root>`; confirm scope above roughly 25 modules.
+3. Pass 1: `rr-leaf-writer` per leaf, deepest first, same depth in parallel. Pass 2 and 3: `rr-parent-writer` once every qualifying child is `verified` or `open`; root last.
+4. After each writer: `rr-verifier`. `FAIL` re-dispatches the writer with a `FIX:` block, max 2 retries, then `open`. A rewritten child resets every ancestor to `pending`.
+5. Fallbacks: no `rr-*` types, spawn `general-purpose` prefixed `Read <skill-path>/agents/rr-<name>.md and follow it.`; no subagents, run in-thread reading the three references.
+
+Spawn prompt lines: `SKILL PATH`, `REPO ROOT`, `MODULE`, `CHILD DOCS`, `SKIPPED DIRS`, `MIN FILES`, optional `FIX`. Writer reply: at most 5 lines (`Wrote:`, `Purpose:`, `Open:`). Verifier reply: `PASS`, or `FAIL` plus up to 15 `<doc path>: <defect>` lines.
+
+## Key files
+
+| Path | What it is |
+| --- | --- |
+| `src/SKILL.md` | Protocol: frontmatter, Orchestrator role assumption, Definitions, Workflow (Step 0, Pass 1 to 3), Sub-agent architecture, Dispatch rules (a) to (f), Reporting back, Checklist, References |
+| `src/agents/` | `rr-orchestrator.md`, `rr-leaf-writer.md`, `rr-parent-writer.md`, `rr-verifier.md`. Shipped (only `rr-*.md`) |
+| `src/references/` | `readme-format.md`, `claude-format.md`, `style.md`. Shipped (not the folder's `README.md`/`CLAUDE.md`) |
+| `src/scripts/module_tree.py` | Shipped mapper: prints qualifying modules deepest first. Stdlib only, read-only |
+| `src/scripts/check_*.py` | Dev-only gates (5) |
+| `src/scripts/test_*.py` | Dev-only unittest suites (7, 102 tests) |
+| `README.md` | User docs. Carries gated badges and the gated "Ignored by default" paragraph. Shipped |
+| `VERSION` | Single source of truth for the version (`1.1.0`). Shipped |
+| `TEST_COUNT` | Live unittest pass count (`102`) |
+| `CHANGELOG.md` | Keep a Changelog. Top entry must equal `VERSION`. No `[Unreleased]` section. Shipped |
+| `LICENSE` | Apache 2.0. Shipped |
+| `Makefile` | Unix/Linux/macOS build channel |
+| `build.ps1` | Windows PowerShell 7+ build channel |
+
+Ships: `SKILL.md`, `scripts/module_tree.py`, `agents/rr-*.md`, `references/*.md` minus `README.md` and `CLAUDE.md`, plus `README.md`, `LICENSE`, `CHANGELOG.md`, `VERSION`. Every `README.md`/`CLAUDE.md` under `src/` is a repo doc and never ships or syncs.
 
 ## Public interface
 
@@ -48,17 +64,17 @@ Runtime (installed skill): Claude reads `SKILL.md`, Step 0 runs `python3 <skill-
 
 | Make | PowerShell | Does |
 | --- | --- | --- |
-| `make build` | `.\build.ps1 build` | Stage `build/repo-remap/`, substitute `__SKILL_VERSION__` (from `VERSION`), `__SKILL_DATE__` (UTC `YYYY-MM-DD`), `__SKILL_COMMIT__` (`git rev-parse --short HEAD`) |
-| `make build-combined` | `build-combined` | `build/repo-remap-combined.md`: `SKILL.md` plus trailing `---` and a Note saying no script ships |
+| `make build` | `.\build.ps1 build` | Stage `build/repo-remap/` (`scripts/`, `agents/`, `references/`, docs), substitute `__SKILL_VERSION__` (from `VERSION`), `__SKILL_DATE__` (UTC `YYYY-MM-DD`), `__SKILL_COMMIT__` (`git rev-parse --short HEAD`) |
+| `make build-combined` | `build-combined` | `build/repo-remap-combined.md`: `SKILL.md`, then references, then `rr-*.md`, each framed `---` and `<!-- file: <dir>/<name> -->`, then a trailing Note |
 | `make package` (default) | `package` (default) | validate, build, zip to `dist/` |
 | `make package-combined` | `package-combined` | validate, build-combined, copy to `dist/` |
 | `make package-tar` | `package-tar` | validate, build, tarball to `dist/` |
-| `make validate` | `validate` | Frontmatter keys, placeholders, script citations, three parity gates. Fast, suite-free |
-| `make lint` | `lint` | `py_compile` every `src/scripts/*.py` |
+| `make validate` | `validate` | Frontmatter keys, placeholders, `src/scripts/`, `src/agents/`, `src/references/` dirs, cited scripts, references and agents, `rr-*.md` frontmatter, four gates. Fast, suite-free |
+| `make lint` | `lint` | `py_compile` every `src/scripts/*.py` (explicit list) |
 | `make test` | `test` | lint, unittest discovery, `check_test_count.py` |
 | `make clean` | `clean` | Remove `build/`, `dist/`, `src/scripts/__pycache__` |
 | `make list` | `list` | build, then list package files |
-| `make sync-skill` | `sync-skill` | Deploy to `~/.claude/skills/repo-remap` with prune |
+| `make sync-skill` | `sync-skill` | Prune, copy and diff into `~/.claude/skills/repo-remap` and `~/.claude/agents/` |
 | `make help` | `help` | Target list |
 
 Python is `python3`; override with `PYTHON=... make test` or `$env:PYTHON`. `build.ps1` exits 1 on an unknown command.
@@ -75,7 +91,7 @@ Exit 1 if root is not a directory, 0 otherwise. Never writes files. A dir qualif
 
 ### Gates
 
-Each `src/scripts/check_*.py` takes an optional root argument (default: repo root), prints `PASS ...` or `FAIL [<tag>] ...`, exits 0 or 1.
+Each `src/scripts/check_*.py` takes an optional root argument (default: repo root), prints `PASS ...` or `FAIL [<tag>] ...`, exits 0 or 1. Under `validate`: `check_readme_parity.py`, `check_changelog_parity.py`, `check_ignore_parity.py`, `check_agent_wiring.py`. Under `test` only: `check_test_count.py`.
 
 ### Activation triggers
 
@@ -83,41 +99,47 @@ Each `src/scripts/check_*.py` takes an optional root argument (default: repo roo
 
 ## Data shapes
 
-- `VERSION`: one line `X.Y.Z`.
-- `TEST_COUNT`: one integer line.
+- `VERSION`: one line `X.Y.Z`. `TEST_COUNT`: one integer line.
 - `CHANGELOG.md` heading: `## [X.Y.Z] - YYYY-MM-DD`; the first match must equal `VERSION`.
 - README version badge: `![...](https://img.shields.io/badge/Skill-vX.Y.Z-...)`. Tests badge: `![...](https://img.shields.io/badge/tests-N%20passing-...)`. Matched as whole badges.
 - README ignore paragraph: starts with `**Ignored by default**`, backticks every non-dotted `IGNORED_DIRS` entry and every `IGNORED_SUFFIXES` entry, contains `Dotted directories are skipped except `.github``, at least 10 backticked names, nothing unknown.
 - `SKILL.md` frontmatter: `name`, `description`, `version: __SKILL_VERSION__`, `released: __SKILL_DATE__`, `commit: __SKILL_COMMIT__`.
+- Agent frontmatter: `name` (equals file stem), `description`, `tools`, `model`, optional `disallowedTools`, `color`; orchestrator also `skills: [repo-remap]` and `tools: Agent(rr-leaf-writer, rr-parent-writer, rr-verifier), ...`.
+- Makefile file sets: `SCRIPT_FILES`, `AGENT_FILES` (`src/agents/rr-*.md`), `REFERENCE_FILES` (`src/references/*.md` minus `README.md`, `CLAUDE.md`), `DOC_FILES`. PowerShell: `$ScriptFiles`, `Get-AgentFiles`, `Get-ReferenceFiles`, `$DocFiles`.
 
 ## Invariants and constraints
 
 - `src/SKILL.md` keeps `name:`, `description:` and the three `__SKILL_*__` placeholders. Never write a literal version there. After `make build`, `grep -c __SKILL_ build/repo-remap/SKILL.md` is 0.
-- Every `scripts/<x>.py` cited in `SKILL.md` must exist under `src/scripts/` (validate checks).
+- Every `scripts/<x>.py`, `references/<x>.md` and `agents/rr-<x>.md` cited in `SKILL.md` must exist under `src/` (validate). Every agent or reference cited in `SKILL.md` or any `src/agents/*.md` must exist (`check_agent_wiring.py`).
+- Every non-orchestrator `rr-*.md` has `Agent` in `disallowedTools`. The orchestrator's `Agent(...)` list names exactly the other `rr-*.md` files. `rr-verifier` has `model: sonnet`.
+- Only `src/agents/rr-*.md` are agents; other `.md` there is ignored by build, validate and sync. References exclude the folder's `README.md` and `CLAUDE.md`. `test_build_channels.py` fails if either channel globs those folders unfiltered.
 - `SKILL.md` Definitions must match `module_tree.qualifying`: more than N direct files, or a qualifying descendant; root always qualifies.
 - `IGNORED_DIRS`, `IGNORED_FILES`, `IGNORED_SUFFIXES` in `module_tree.py` are restated in the README "Ignored by default" paragraph (gated, dirs and suffixes only) and in `SKILL.md` Definitions (not gated). The `SKILL.md` list is a subset and names "lockfile-only dirs", which the code does not implement.
 - `module_tree.py`: Python 3.8+, standard library only. No pip dependencies anywhere, no linters that need installing.
-- `Makefile` and `build.ps1` are one fact in two places. Any change to a target, gate invocation, lint list, test command or combined-file Note goes in both; `test_build_channels.py` fails on drift.
-- `SCRIPT_FILES` (Makefile) and `$ScriptFiles` (build.ps1) name only `src/scripts/module_tree.py`. `make list` must show no `check_*.py` or `test_*.py`.
+- `Makefile` and `build.ps1` are one fact in two places. Any change to a target, file set, gate invocation, lint list, test command or combined-file Note and framing goes in both; `test_build_channels.py` fails on drift.
+- `SCRIPT_FILES`/`$ScriptFiles` name only `src/scripts/module_tree.py`. `make list` must show no `check_*.py` or `test_*.py`.
 - `check_test_count.py` runs under `test` only, never `validate`.
-- Badge regexes stay whole-badge; never loosen to substring.
-- A missing or unparseable `CHANGELOG.md` is FAIL, not skip.
+- Badge regexes stay whole-badge; never loosen to substring. A missing or unparseable `CHANGELOG.md` is FAIL, not skip.
 - Makefile loops use `|| { echo ...; exit 1; }`, never `|| ( ... exit 1 )`: `exit 1` in a subshell ends only the subshell and a `for` loop's status is its last iteration's. Probe any repair with a failing non-last entry. `test_makefile_loops_use_brace_groups` rejects `|| (` on non-comment lines.
 - `build.ps1` starts with `#Requires -Version 7`, names `-Encoding utf8` on every `Get-Content`/`Set-Content`, never wraps a gate in `Test-Path`, and exits 1 on an unknown command.
+- `sync-skill` owns `scripts/`, `references/`, `agents/` under the skill install (pruned wholly), but in shared `~/.claude/agents/` prunes only `rr-*.md`.
 - Style of generated docs (and of this repo's docs): plain language, no emojis, no em dashes, no preambles or closing summaries.
 
 ## Dependencies
 
 - Python 3.8+ (stdlib only), GNU make, `git` (build targets call `git rev-parse`), `zip`, `tar`, `sed`, `diff`.
 - PowerShell 7+ for `build.ps1`.
+- Claude Code subagent support (`Agent` tool, `subagent_type`) for the multi-agent path; the in-thread fallback needs none.
 - The Makefile uses GNU `sed -i "..."`; BSD `sed` on stock macOS expects a suffix after `-i`.
 
 ## Failure modes
 
-- `validate`: `ERROR: <reason>` and exit 1 for missing `SKILL.md`, frontmatter key, placeholder, cited script, or `src/scripts/`; each gate prints `FAIL [<tag>]` and fails the target.
+- `validate`: `ERROR: <reason>` and exit 1 for missing `SKILL.md`, frontmatter key, placeholder, `src/scripts/`, `src/agents/` or `src/references/`; a cited script, reference or agent not found; `src/agents/ has no agent definitions`; an `rr-*.md` missing `name:`, `description:` or `tools:`. Each gate prints `FAIL [<tag>]` and fails the target.
+- `check_agent_wiring.py` tags: `agents-missing`, `agent-frontmatter`, `worker-can-spawn`, `orchestrator-wiring`, `dangling-agent`, `dangling-reference`, `verifier-model`, `agent-wiring-io`.
 - `test`: syntax error stops at lint; any failing test stops unittest; `FAIL [test-count-drift] TEST_COUNT is X, live run passed Y` when counts diverge.
-- Three suites include `test_live_repo_passes`, so badge, changelog or ignore-paragraph drift in the real repo fails the suite, not only `validate`.
-- `sync-skill`: `ERROR: sync-skill shipped dev-only scripts into the install` if a `test_*.py` or `check_*.py` lands in the install; `ERROR: sync diff mismatch` if `SKILL.md`, `module_tree.py` or `VERSION` differ after copy. `README.md`, `LICENSE`, `CHANGELOG.md` are copied but not compared.
+- Four suites (readme, changelog, ignore, agent wiring) include live-repo cases, so drift in the real repo fails the suite, not only `validate`.
+- `build-combined`: `ERROR: no files match src/references/*.md` or `src/agents/rr-*.md` when a set is empty.
+- `sync-skill`: `ERROR: sync-skill shipped dev-only scripts into the install`; `ERROR: sync diff mismatch` if `SKILL.md`, `module_tree.py`, `VERSION`, a reference or an agent copy differs; `ERROR: sync diff mismatch: unexpected agents/<name>` or `references/<name>` for an unshipped file in the skill install. `README.md`, `LICENSE`, `CHANGELOG.md` are copied but not compared.
 - Build outside a git checkout fails at `git rev-parse`.
 
 ## Working here
@@ -131,11 +153,15 @@ Each `src/scripts/check_*.py` takes an optional root argument (default: repo roo
 
 ### After adding or removing tests
 
-Run `python3 -m unittest discover -s src/scripts -p "test_*.py"`, write the `Ran N tests` number to `TEST_COUNT`, update the README tests badge and the per-suite counts in the README Contributing section (prose, not gated).
+Run `python3 -m unittest discover -s src/scripts -p "test_*.py"`, write the `Ran N tests` number to `TEST_COUNT`, update the README tests badge and the per-suite counts in the README Contributing section (prose, not gated). Current: build_channels 27, agent_wiring 13, changelog 10, ignore 11, readme 12, test_count 11, module_tree 18.
 
 ### Adding a script under src/scripts
 
 Add it to the lint list in the Makefile `lint` target and `$LintFiles` in `build.ps1`; the lockstep test compares both to the live `src/scripts/*.py` set. Do not add it to `SCRIPT_FILES`/`$ScriptFiles` unless it must ship, and then update the lockstep test too.
+
+### Adding an agent or reference
+
+Agent: `src/agents/rr-<x>.md`, `name: rr-<x>`, keys `name`, `description`, `tools`, `model`, `disallowedTools: Agent` unless orchestrator; add it to the orchestrator's `Agent(...)` list. Reference: lowercase `[a-z0-9_-]` name, never `README.md`/`CLAUDE.md`; it ships automatically. Run `make validate`.
 
 ### Commit subjects
 
@@ -148,9 +174,9 @@ Bracketed area tag: `[skill] ...`, `[script] ...`, `[build] ...`, `[docs] ...`. 
 - [ ] README version and tests badges match `VERSION` and `TEST_COUNT`
 - [ ] `CHANGELOG.md` first entry equals `VERSION`
 - [ ] README "Ignored by default" paragraph agrees with `IGNORED_DIRS` and `IGNORED_SUFFIXES`
-- [ ] `src/SKILL.md` has `name:`, `description:` and the three placeholders; cited scripts exist
+- [ ] `src/SKILL.md` has `name:`, `description:` and the three placeholders; cited scripts, references and agents exist
 - [ ] `SKILL.md` Definitions match the qualifying logic in `module_tree.py`
-- [ ] `make list` shows no `check_*.py` or `test_*.py`
+- [ ] `make list` shows no `check_*.py`, `test_*.py`, or `README.md`/`CLAUDE.md` under `agents/` or `references/`
 - [ ] `grep -c __SKILL_ build/repo-remap/SKILL.md` is 0 after `make build`
 - [ ] PowerShell claims verified by reading `build.ps1` and by `test_build_channels.py`, not by running it (no PowerShell in the usual dev environment). Say so when reporting
 
@@ -163,17 +189,21 @@ make sync-skill          # Unix/Linux/macOS
 .\build.ps1 sync-skill   # Windows
 ```
 
-It deletes `~/.claude/skills/repo-remap/scripts/*.py`, copies `SKILL.md`, `module_tree.py`, `README.md`, `LICENSE`, `CHANGELOG.md` and `VERSION`, refuses if a dev-only script leaked into the install, and compares `SKILL.md`, `module_tree.py` and `VERSION` with the source. Prune-before-copy is the point: `cp` alone cannot remove a file deleted from the repo.
+It deletes `~/.claude/skills/repo-remap/scripts/*.py`, `references/*.md`, `agents/*.md` and `~/.claude/agents/rr-*.md`, then copies `SKILL.md`, `module_tree.py`, the reference files, `rr-*.md` into `<skill install>/agents/` and `~/.claude/agents/`, and `README.md`, `LICENSE`, `CHANGELOG.md`, `VERSION`. It refuses if a dev-only script leaked into the install and compares `SKILL.md`, `module_tree.py`, `VERSION`, every reference and every agent copy with the source. Prune-before-copy is the point: `cp` alone cannot remove a file deleted from the repo.
 
 Fallback (no prune) if make and PowerShell are unavailable:
 
 ```bash
-mkdir -p ~/.claude/skills/repo-remap/scripts
+mkdir -p ~/.claude/skills/repo-remap/scripts ~/.claude/skills/repo-remap/references ~/.claude/skills/repo-remap/agents ~/.claude/agents
 cp src/SKILL.md ~/.claude/skills/repo-remap/SKILL.md
 cp src/scripts/module_tree.py ~/.claude/skills/repo-remap/scripts/    # never check_*.py or test_*.py
+cp src/references/readme-format.md src/references/claude-format.md src/references/style.md ~/.claude/skills/repo-remap/references/
+cp src/agents/rr-*.md ~/.claude/skills/repo-remap/agents/
+cp src/agents/rr-*.md ~/.claude/agents/
 cp README.md LICENSE CHANGELOG.md VERSION ~/.claude/skills/repo-remap/
 diff -q src/SKILL.md ~/.claude/skills/repo-remap/SKILL.md
 diff -q src/scripts/module_tree.py ~/.claude/skills/repo-remap/scripts/module_tree.py
+for f in src/agents/rr-*.md; do diff -q "$f" ~/.claude/agents/"$(basename "$f")"; done
 ls ~/.claude/skills/repo-remap/scripts/                                 # must list module_tree.py only
 ```
 
