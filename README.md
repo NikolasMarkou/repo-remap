@@ -1,12 +1,12 @@
 # Repo Remap
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Skill](https://img.shields.io/badge/Skill-v1.1.0-green.svg)](CHANGELOG.md)
+[![Skill](https://img.shields.io/badge/Skill-v1.2.0-green.svg)](CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-102%20passing-brightgreen.svg)](src/scripts/test_module_tree.py)
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](src/scripts/module_tree.py)
 [![Sponsored by Electi](https://img.shields.io/badge/Sponsored%20by-Electi-red.svg)](https://www.electiconsulting.com)
 
-**A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that rebuilds a repository's documentation as a bottom-up tree of self-contained `README.md` and `CLAUDE.md` files.**
+**A [Claude Code](https://docs.anthropic.com/en/docs/claude-code) skill that rebuilds a repository's documentation as a bottom-up tree of self-contained `README.md` and `AGENTS.md` files.**
 
 Documentation rots quietly. The root README was true two refactors ago. Half the subdirectories have no docs at all, and the ones that do describe a module that has since been split, renamed, or gutted. Nobody notices until someone acts on it: a new hire wires up an interface that no longer exists, or an agent reads a confident, stale paragraph and builds on top of a lie.
 
@@ -16,7 +16,7 @@ Repo Remap inverts the direction. It maps the repo into modules, orders them dee
 
 > Write the leaves first. Every layer above summarizes text that already exists, not a directory name it hopes to understand.
 
-Each documented directory gets exactly two files, because the two readers want opposite things. `README.md` is for a person who has never seen the code: plain words, short sentences, the shape of the problem. `CLAUDE.md` is for an agent working inside that directory right now: paths, signatures, data shapes, invariants, failure modes, and the rules for changing the code.
+Each documented directory gets exactly two files, because the two readers want opposite things. `README.md` is for a person who has never seen the code: plain words, short sentences, the shape of the problem. `AGENTS.md` is for an agent working inside that directory right now: paths, signatures, data shapes, invariants, failure modes, and the rules for changing the code.
 
 Both are self-contained. No file points at another file in the tree. Open any single one of them and you can act.
 
@@ -30,7 +30,7 @@ Say "remap this repo" and here is what actually happens:
 - You get the module list back before anything is written if the repo is large, so you can exclude areas.
 - Leaf modules are documented first, from their source files, not from their old docs.
 - Each level up is written from its children's finished docs, ending at the repo root.
-- Existing `README.md` and `CLAUDE.md` files are treated as claims to verify, then overwritten.
+- Existing `README.md` and `AGENTS.md` files are treated as claims to verify, then overwritten.
 - Every module is checked by a separate read-only verifier before anything above it is written.
 
 The main conversation acts as an orchestrator. It never reads source or doc bodies itself: it hands each module to a subagent (a separate Claude worker with its own context) and keeps only the module list and short replies. The skill is one protocol file, four agent definitions, three format rule files and one Python script with no dependencies. See [Get Started](#get-started-in-60-seconds) to install it, and [A Worked Example](#a-worked-example) to watch a full run.
@@ -71,9 +71,9 @@ Reach for it when the map of the codebase is missing or wrong. Skip it when you 
 | You are starting work in an unfamiliar codebase | You already know the code and need a quick fix |
 | Agents keep acting on outdated README claims | You want API reference generated from docstrings |
 | Onboarding a new person or a new agent to the system | You want a changelog, ADR, or design proposal |
-| You want `CLAUDE.md` files across the whole tree | You want prose marketing copy about the project |
+| You want `AGENTS.md` files across the whole tree | You want prose marketing copy about the project |
 
-**Trigger phrases**: *"remap this repo"*, *"the docs are out of date"*, *"document every module"*, *"generate CLAUDE.md files across the codebase"*, *"re-onboard me to this project"*.
+**Trigger phrases**: *"remap this repo"*, *"the docs are out of date"*, *"document every module"*, *"generate AGENTS.md files across the codebase"*, *"re-onboard me to this project"*.
 
 ---
 
@@ -154,7 +154,7 @@ PROCESSING ORDER (deepest first)
 
 -- depth 1 --
   src/adapters                 files=1    parent of 2
-  src/core                     files=7    leaf [README+CLAUDE]
+  src/core                     files=7    leaf [README+AGENTS]
   tests/integration            files=5    leaf
 
 -- depth 0 --
@@ -170,11 +170,11 @@ SKIPPED (documented by nearest qualifying ancestor)
 
 Eight modules is under the confirmation threshold, so the orchestrator proceeds. From here on it only sends short prompts (skill path, repo root, module path, child doc paths, skipped dirs, threshold) and reads short replies.
 
-**Pass 1 (leaves)** dispatches one `rr-leaf-writer` per leaf. The two depth-2 leaves go out together in one message, then the depth-1 leaves. The writer for `src/adapters/stripe` reads every direct source file in full: public API, entry points, side effects, error paths. It reads the existing README too, and treats it as a set of claims. Two of them still hold, one describes a retry policy that was removed last year, so it goes. It writes a new `README.md` and a new `CLAUDE.md`, overwriting the old file completely, and replies in at most five lines.
+**Pass 1 (leaves)** dispatches one `rr-leaf-writer` per leaf. The two depth-2 leaves go out together in one message, then the depth-1 leaves. The writer for `src/adapters/stripe` reads every direct source file in full: public API, entry points, side effects, error paths. It reads the existing README too, and treats it as a set of claims. Two of them still hold, one describes a retry policy that was removed last year, so it goes. It writes a new `README.md` and a new `AGENTS.md`, overwriting the old file completely, and replies in at most five lines.
 
 After each writer, an `rr-verifier` checks that module's two docs against its source and the format rules and replies `PASS` or `FAIL` with one line per defect. On `FAIL` the same writer runs again with those lines as a `FIX:` block, at most twice. A module still failing after that is marked open and reported.
 
-**Pass 2 (one level up)** reaches `src/adapters` once both its children have passed. An `rr-parent-writer` reads the module's own single file, then the finished `README.md` and `CLAUDE.md` of both children, then the skipped `fixtures/` directory, since nothing else will cover it. It does not read the children's source. The parent docs state what each adapter is for and how the pieces connect. They do not restate the Stripe client's retry semantics: that already lives one level down, in full.
+**Pass 2 (one level up)** reaches `src/adapters` once both its children have passed. An `rr-parent-writer` reads the module's own single file, then the finished `README.md` and `AGENTS.md` of both children, then the skipped `fixtures/` directory, since nothing else will cover it. It does not read the children's source. The parent docs state what each adapter is for and how the pieces connect. They do not restate the Stripe client's retry semantics: that already lives one level down, in full.
 
 The same pass then writes `src`, from `src/adapters` and `src/core`, and `tests`, from `tests/integration`. Neither holds source files of its own; they qualify only through their children.
 
@@ -198,13 +198,13 @@ The ordering rule that enforces this is blunt: never document a parent before it
 
 A README that satisfies a new engineer is bad context for an agent, and a file dense enough to be good agent context is unreadable for a person. Most projects compromise and produce one document that serves neither.
 
-Repo Remap refuses the compromise. `README.md` explains the problem the module solves in plain language and shows how to run it. `CLAUDE.md` carries the path from repo root, the public interface with signatures, data shapes, invariants and ordering constraints, dependencies, failure modes, and the concrete rules for changing the code. Target around 200 lines, hard ceiling 300. When it will not fit, narrative gets cut and contracts stay.
+Repo Remap refuses the compromise. `README.md` explains the problem the module solves in plain language and shows how to run it. `AGENTS.md` carries the path from repo root, the public interface with signatures, data shapes, invariants and ordering constraints, dependencies, failure modes, and the concrete rules for changing the code. Target around 200 lines, hard ceiling 300. When it will not fit, narrative gets cut and contracts stay.
 
 ### 3. Self-containment over cross-references
 
 A documentation tree held together by links reads well in a browser and fails everywhere else. Agents load one file. People open one file. Grep returns one file.
 
-So no file in the tree references another file in the tree. No "see the parent README", no "as described in `../core/CLAUDE.md`". Context a reader needs is repeated, and duplication across files is expected and correct here. Referring to source files by path is encouraged. Referring to other docs is not. Each file states what the module is and where it sits in the repo in its first lines, so it survives being read in isolation.
+So no file in the tree references another file in the tree. No "see the parent README", no "as described in `../core/AGENTS.md`". Context a reader needs is repeated, and duplication across files is expected and correct here. Referring to source files by path is encouraged. Referring to other docs is not. Each file states what the module is and where it sits in the repo in its first lines, so it survives being read in isolation.
 
 ### 4. Not everything deserves a file
 
@@ -213,7 +213,7 @@ Documenting every directory produces noise that buries the real content. The qua
 | Term | Definition |
 | --- | --- |
 | **Module** | A directory containing source files, excluding ignored paths |
-| **Direct files** | Source files directly inside the directory, not counting `README.md` and `CLAUDE.md` |
+| **Direct files** | Source files directly inside the directory, not counting `README.md` and `AGENTS.md` |
 | **Leaf module** | A module with no child modules |
 | **Qualifying module** | More than 2 direct files, or at least one qualifying descendant |
 | **Skipped module** | 2 or fewer direct files and no qualifying descendant |
@@ -239,7 +239,7 @@ flowchart TD
     V2 -- FAIL, max 2 retries with FIX --> P
     V2 -- PASS --> E{At repo root?}
     E -- no --> P
-    E -- yes --> F[Pass 3 done: root README.md + CLAUDE.md, report]
+    E -- yes --> F[Pass 3 done: root README.md + AGENTS.md, report]
 ```
 
 **No mermaid renderer? The same passes as a table**
@@ -261,7 +261,7 @@ The agents live in `src/agents/`:
 | `rr-parent-writer` | Both docs for one parent or the root, from its children's docs | inherit | Cannot spawn agents. Never edits child docs |
 | `rr-verifier` | Checks one module's two docs | sonnet | Cannot spawn agents, write or edit. Runs no builds or tests |
 
-Every worker reads the same three rule files in `src/references/` before it writes or checks anything: `readme-format.md`, `claude-format.md` and `style.md`. A child rewritten after its parent was written sends every ancestor back to be rewritten.
+Every worker reads the same three rule files in `src/references/` before it writes or checks anything: `readme-format.md`, `agents-format.md` and `style.md`. A child rewritten after its parent was written sends every ancestor back to be rewritten.
 
 **Ignored by default**: `.git`, `.hg`, `.svn`, `.idea`, `.vscode`, `__pycache__`, `node_modules`, `bower_components`, `vendor`, `venv`, `.venv`, `env`, `virtualenv`, `dist`, `build`, `out`, `target`, `.next`, `.nuxt`, `.svelte-kit`, `coverage`, `.terraform`, `.gradle`, `.tox`, `.cache`, `site-packages`, and caches such as `.pytest_cache`, `.mypy_cache`, `.ruff_cache`. Dotted directories are skipped except `.github`. Compiled and generated files (`.pyc`, `.pyo`, `.class`, `.o`, `.so`, `.dll`, `.dylib`, `.log`, `.lock`, `.map`, `.min.js`, `.min.css`, `.snap`) do not count toward the file total.
 
@@ -280,7 +280,7 @@ python3 module_tree.py <repo-root> [--min-files N] [--ignore DIR ...]
 | `--min-files N` | Modules with this many direct files or fewer are skipped. Default 2. Raise it on a sprawling repo to get a coarser tree. |
 | `--ignore DIR ...` | Extra directory names added to the ignore set, matched by name at any depth. |
 
-Output has three parts: a header with the qualifying and skipped counts, the processing order grouped by depth with the deepest first, and the list of skipped directories with their file counts. Each qualifying line shows the relative path, the direct file count, whether it is a leaf or a parent of N documented children, and a `[README]`, `[CLAUDE]`, or `[README+CLAUDE]` marker when docs already exist there.
+Output has three parts: a header with the qualifying and skipped counts, the processing order grouped by depth with the deepest first, and the list of skipped directories with their file counts. Each qualifying line shows the relative path, the direct file count, whether it is a leaf or a parent of N documented children, and a `[README]`, `[AGENTS]`, or `[README+AGENTS]` marker when docs already exist there.
 
 A directory that qualifies only through a descendant but holds nothing anywhere below it is dropped, so empty scaffolding never enters the list. Exit code is 1 if the root argument is not a directory, 0 otherwise.
 
@@ -319,7 +319,7 @@ For a person who has never seen this code. Simple words, short sentences, concre
 | How to use it | A minimal runnable example or the command to run, with real values |
 | Things to know | Gotchas, limits, assumptions, required environment |
 
-### CLAUDE.md
+### AGENTS.md
 
 For an agent working in this module. Operational and specific, with no motivation and no sales copy.
 
@@ -355,7 +355,7 @@ These apply to every generated file, and are overridden only when you explicitly
 - [ ] Every module has a `PASS` from `rr-verifier`, or is listed as open
 - [ ] No parent was written before its children, and no ancestor of a rewritten module was left stale
 - [ ] No file references another doc file
-- [ ] Every `CLAUDE.md` is under 300 lines
+- [ ] Every `AGENTS.md` is under 300 lines
 - [ ] Parents summarize children rather than duplicating their internals
 - [ ] Skipped directories are covered by their nearest documented ancestor
 - [ ] No emojis, no em dashes, no preambles anywhere
@@ -372,7 +372,7 @@ These apply to every generated file, and are overridden only when you explicitly
 
 **Why no links between docs?** Because a file that points elsewhere is useless to whoever loaded only that file. Self-containment costs duplication and buys the ability to act on any single file.
 
-**Will my `CLAUDE.md` files get huge?** No. Target is around 200 lines with a hard ceiling of 300. Over the ceiling, narrative is cut and contracts, invariants, and paths are kept.
+**Will my `AGENTS.md` files get huge?** No. Target is around 200 lines with a hard ceiling of 300. Over the ceiling, narrative is cut and contracts, invariants, and paths are kept.
 
 **What counts as a module?** Any directory with source files, after ignored paths are removed, that has more than 2 direct files or has a qualifying descendant. The root always counts.
 
@@ -405,7 +405,7 @@ repo-remap/
     │   └── rr-verifier.md              # read-only check of one module (sonnet)
     ├── references/
     │   ├── readme-format.md            # README.md template
-    │   ├── claude-format.md            # CLAUDE.md template, 200-line target, 300 ceiling
+    │   ├── agents-format.md            # AGENTS.md template, 200-line target, 300 ceiling
     │   └── style.md                    # self-containment and style rules
     └── scripts/
         ├── module_tree.py              # module mapper, prints processing order deepest first
@@ -419,7 +419,7 @@ repo-remap/
         └── test_build_channels.py      # keeps Makefile and build.ps1 in lockstep
 ```
 
-The package built by `make build` contains only `SKILL.md`, `scripts/module_tree.py`, `agents/rr-*.md`, the three `references/*.md` rule files, `README.md`, `LICENSE`, `CHANGELOG.md` and `VERSION`. Gate and test scripts stay in the repo, and so do the `README.md` and `CLAUDE.md` files inside `src/` and its folders: they document this repo and never ship. The complete protocol is `src/SKILL.md`.
+The package built by `make build` contains only `SKILL.md`, `scripts/module_tree.py`, `agents/rr-*.md`, the three `references/*.md` rule files, `README.md`, `LICENSE`, `CHANGELOG.md` and `VERSION`. Gate and test scripts stay in the repo, and so do the `README.md` and `AGENTS.md` files inside `src/` and its folders: they document this repo and never ship. The complete protocol is `src/SKILL.md`.
 
 ---
 
@@ -471,7 +471,7 @@ Things to know about the build:
 - The Makefile edits files with `sed -i "..."`, the GNU form. BSD `sed` on stock macOS expects a suffix argument after `-i`.
 - `make test` runs the suite twice: once directly, then again inside `check_test_count.py`.
 - `sync-skill` compares `SKILL.md`, `module_tree.py`, `VERSION`, every shipped reference file and every agent file (in both install locations) with the source after copying, and fails on any unexpected file in the installed `references/` or `agents/`. `README.md`, `LICENSE` and `CHANGELOG.md` are copied but not compared.
-- Only `src/agents/rr-*.md` counts as an agent, and `src/references/README.md` and `CLAUDE.md` are excluded from the references. Every build step applies both filters.
+- Only `src/agents/rr-*.md` counts as an agent, and `src/references/README.md` and `AGENTS.md` are excluded from the references. Every build step applies both filters.
 
 </details>
 

@@ -4,7 +4,7 @@ This folder (`src/` in the repo-remap repository) holds everything that makes up
 
 ## What it is for
 
-Repo Remap is a Claude Code skill. When a user says something like "remap this repo" or "the docs are out of date", Claude follows it to rewrite the repository's documentation as a tree of `README.md` files (for people) and `CLAUDE.md` files (for Claude), one pair per directory worth documenting. It writes the deepest directories first and writes each parent from its children's finished docs, so nothing is guessed from a folder name. The files at the repo root (build scripts, `VERSION`, `CHANGELOG.md`) turn this folder into an installable package.
+Repo Remap is a Claude Code skill. When a user says something like "remap this repo" or "the docs are out of date", Claude follows it to rewrite the repository's documentation as a tree of `README.md` files (for people) and `AGENTS.md` files (for agents), one pair per directory worth documenting. It writes the deepest directories first and writes each parent from its children's finished docs, so nothing is guessed from a folder name. The files at the repo root (build scripts, `VERSION`, `CHANGELOG.md`) turn this folder into an installable package.
 
 ## How it works
 
@@ -34,7 +34,7 @@ flowchart TD
 
 - `SKILL.md` - the protocol Claude reads: definitions, the passes, agent roles, dispatch rules (spawn prompt contract, replies, parallelism, retries, fallbacks), reporting and a checklist. Its frontmatter holds build placeholders.
 - `agents/` - four Claude Code subagent definitions: `rr-orchestrator.md` (plans and tracks the run, never reads code), `rr-leaf-writer.md` (docs for one leaf from its source), `rr-parent-writer.md` (docs for one parent from its children's docs), `rr-verifier.md` (read-only checker, runs on the `sonnet` model).
-- `references/` - three rule files every writer and the verifier read: `readme-format.md`, `claude-format.md` (target about 200 lines, ceiling 300), `style.md` (self-containment and style rules).
+- `references/` - three rule files every writer and the verifier read: `readme-format.md`, `agents-format.md` (target about 200 lines, ceiling 300), `style.md` (self-containment and style rules).
 - `scripts/` - Python, standard library only. `module_tree.py` is the mapper that ships. The `check_*.py` gates and `test_*.py` suites (102 tests) keep the repo consistent and never ship.
 
 ## How to use it
@@ -62,7 +62,7 @@ make test
 ## Things to know
 
 - `SKILL.md` has three placeholders in its frontmatter (`__SKILL_VERSION__`, `__SKILL_DATE__`, `__SKILL_COMMIT__`). The build replaces them. The source copy never holds a real version number.
-- What ships: `SKILL.md`, `scripts/module_tree.py`, `agents/rr-*.md` and the three rule files in `references/`. The `README.md` and `CLAUDE.md` files in this tree are docs for this repo and never ship.
+- What ships: `SKILL.md`, `scripts/module_tree.py`, `agents/rr-*.md` and the three rule files in `references/`. The `README.md` and `AGENTS.md` files in this tree are docs for this repo and never ship.
 - `make sync-skill` puts `SKILL.md`, the mapper and the rule files in `~/.claude/skills/repo-remap/`, and copies the agent files to two places: `~/.claude/skills/repo-remap/agents/`, where `SKILL.md` reads them, and `~/.claude/agents/`, which makes Claude Code offer them as subagent types. It then checks every copy against the source. The zip and tarball from `make package` hold the agent files only in an `agents/` folder inside the skill.
 - The ignored directory list in `SKILL.md` is a short sample. The full list is in `scripts/module_tree.py`. `SKILL.md` also mentions "lockfile-only dirs", which the script does not detect.
 - `make validate` fails if `SKILL.md` cites a `scripts/`, `agents/` or `references/` file that does not exist, or if an agent file cites a missing agent or reference file.

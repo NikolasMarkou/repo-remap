@@ -4,6 +4,19 @@ All notable changes to the Repo Remap project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.0] - 2026-10-05
+
+**AGENTS.md rename.** The generated agent doc is now `AGENTS.md` instead of `CLAUDE.md`, matching the multi-tool agent-instruction standard.
+
+### Added
+
+- Legacy migration shim: `module_tree.py` keeps ignoring `CLAUDE.md` so mid-migration repos don't count it as source; writers read a legacy `CLAUDE.md` as claims when no `AGENTS.md` exists, then delete it; `rr-verifier` fails a module where legacy `CLAUDE.md` remains beside `AGENTS.md`.
+
+### Changed
+
+- Renamed this repo's own docs (`AGENTS.md` in root, `src/`, `src/agents/`, `src/references/`, `src/scripts/`) and the template (`src/references/agents-format.md`); all prompts, gates, tests, build channels and docs now emit `AGENTS.md`, with the audience reworded from Claude-only to agents.
+- Historical entries below keep their original `CLAUDE.md` wording; this entry records the rename.
+
 ## [1.1.0] - 2026-09-21
 
 **Subagent architecture.** The skill now runs as an orchestrator that hands every read and every doc write to a subagent, so the main context holds only the module list and short replies.

@@ -5,7 +5,7 @@ Purpose: The module mapper that ships with the Repo Remap skill, plus the dev-on
 
 ## Scope
 
-Repo Remap is a Claude Code skill that regenerates a repo's docs bottom-up as self-contained `README.md` and `CLAUDE.md` files. This directory holds all of its Python code.
+Repo Remap is a Claude Code skill that regenerates a repo's docs bottom-up as self-contained `README.md` and `AGENTS.md` files. This directory holds all of its Python code.
 
 - Shipped: `module_tree.py` only. It is the one script copied into the build, the package and the local install.
 - Dev-only: `check_*.py` (gates) and `test_*.py` (suites). They must never ship or sync.
@@ -76,7 +76,7 @@ qualifying modules: <n>   skipped dirs: <m>
 PROCESSING ORDER (deepest first)
 
 -- depth <d> --
-  <rel path padded to 60> files=<count padded to 4> leaf|parent of <k>[ [README|CLAUDE|README+CLAUDE]]
+  <rel path padded to 60> files=<count padded to 4> leaf|parent of <k> [README|AGENTS|README+AGENTS]
 -- root --
   .  ...
 
@@ -100,7 +100,7 @@ All five expose `run(root: Path) -> int` and `main(argv=None) -> int`.
 
 ### check_agent_wiring rules
 
-`run` reads `src/SKILL.md` (FAIL `agent-wiring-io` if unreadable), requires `src/agents/` (FAIL `agents-missing`), loads `agents = {stem: text}` from `src/agents/rr-*.md`, `cited = {"SKILL.md": ..., "agents/<name>.md": ...}` from `src/agents/*.md`, and `references` = stems of every `src/references/*.md` (empty set if the dir is absent). The gate does not filter: `README.md` and `CLAUDE.md` in `src/agents/` are scanned for citations, and `README`/`CLAUDE` stems in `src/references/` count as references (the PASS line's reference count includes them). `check` then reports:
+`run` reads `src/SKILL.md` (FAIL `agent-wiring-io` if unreadable), requires `src/agents/` (FAIL `agents-missing`), loads `agents = {stem: text}` from `src/agents/rr-*.md`, `cited = {"SKILL.md": ..., "agents/<name>.md": ...}` from `src/agents/*.md`, and `references` = stems of every `src/references/*.md` (empty set if the dir is absent). The gate does not filter: `README.md` and `AGENTS.md` in `src/agents/` are scanned for citations, and `README`/`AGENTS` stems in `src/references/` count as references (the PASS line's reference count includes them). `check` then reports:
 
 - `agents-missing`: no `rr-*.md` files (returns immediately).
 - `agent-frontmatter`: no leading `---` block, any of `REQUIRED_KEYS = ("name", "description", "tools", "model")` empty or missing, or `name` differs from the file stem.
@@ -115,7 +115,7 @@ PASS line: `PASS agent wiring: <n> agents (<n-1> workers), <r> references, <c> f
 ## Data shapes
 
 - `IGNORED_DIRS` (set): `.git .hg .svn .idea .vscode .pytest_cache .mypy_cache .ruff_cache __pycache__ node_modules bower_components vendor venv .venv env .env virtualenv dist build out target .next .nuxt .svelte-kit coverage .coverage .terraform .gradle .tox .cache site-packages .DS_Store`.
-- `IGNORED_FILES` (set): `README.md CLAUDE.md .DS_Store .gitkeep`. Not checked by any gate.
+- `IGNORED_FILES` (set): `README.md AGENTS.md CLAUDE.md` (legacy) `.DS_Store .gitkeep`. Not checked by any gate.
 - `IGNORED_SUFFIXES` (tuple, used with `str.endswith`): `.pyc .pyo .class .o .so .dll .dylib .log .lock .map .min.js .min.css .snap`.
 - Version badge regex: `!\[[^\]]*\]\(https://img\.shields\.io/badge/Skill-v(\d+\.\d+\.\d+)-[^)]*\)`.
 - Tests badge regex: `!\[[^\]]*\]\(https://img\.shields\.io/badge/tests-(\d+)%20passing-[^)]*\)`.
@@ -134,7 +134,7 @@ PASS line: `PASS agent wiring: <n> agents (<n-1> workers), <r> references, <c> f
 - `check_test_count.py` belongs to the `test` target only, never `validate` (enforced by `test_build_channels.py`).
 - Gates must stay importable without side effects; tests import them directly.
 - `check_agent_wiring.py` runs under `validate` only, never `test` (`test_validate_runs_agent_wiring_gate` enforces both channels). The `validate` loop in both channels separately greps each `src/agents/rr-*.md` (Makefile `for f in src/agents/rr-*.md`, `build.ps1` `$agents = Get-AgentFiles`) for `name`, `description`, `tools`; the gate additionally requires `model`. `test_validate_agent_frontmatter_keys_agree` pins the loop to exactly those three keys in both channels.
-- Build channel file sets (pinned by `test_build_channels.RepoDocsExcluded`): agents are `AGENT_FILES := $(sort $(wildcard src/agents/rr-*.md))` and `Get-AgentFiles` (`Get-ChildItem src/agents -Filter rr-*.md -File`); references are `REFERENCE_FILES`, which `filter-out`s `src/references/README.md` and `src/references/CLAUDE.md`, and `Get-ReferenceFiles` (`Where-Object { $_.Name -notin @('README.md','CLAUDE.md') }`). `build`, `build-combined` and `sync-skill` must use these sets; an unfiltered `src/agents/*.md` or `src/references/*.md` glob is allowed only inside an `ERROR: no files match` message. Makefile `sync-skill` also fails with `ERROR: sync diff mismatch: unexpected references/<name>` if the install holds a reference not in `REFERENCE_FILES`; `build.ps1` compares the source and installed name sets. `sync-skill` installs `rr-*.md` into both `<skill install>/agents/` and `~/.claude/agents/`: it prunes `<skill install>/agents/*.md` and only `rr-*.md` in the shared `~/.claude/agents/`, copies, diffs each agent file in both places, and fails with `ERROR: sync diff mismatch: unexpected agents/<name>` (Makefile) or `ERROR: sync diff mismatch: agents/` (`build.ps1`) if the skill's `agents/` holds a name not in the source set (pinned by `AgentsAndReferences.test_sync_installs_and_compares_skill_agents_dir`).
+- Build channel file sets (pinned by `test_build_channels.RepoDocsExcluded`): agents are `AGENT_FILES := $(sort $(wildcard src/agents/rr-*.md))` and `Get-AgentFiles` (`Get-ChildItem src/agents -Filter rr-*.md -File`); references are `REFERENCE_FILES`, which `filter-out`s `src/references/README.md` and `src/references/AGENTS.md`, and `Get-ReferenceFiles` (`Where-Object { $_.Name -notin @('README.md','AGENTS.md') }`). `build`, `build-combined` and `sync-skill` must use these sets; an unfiltered `src/agents/*.md` or `src/references/*.md` glob is allowed only inside an `ERROR: no files match` message. Makefile `sync-skill` also fails with `ERROR: sync diff mismatch: unexpected references/<name>` if the install holds a reference not in `REFERENCE_FILES`; `build.ps1` compares the source and installed name sets. `sync-skill` installs `rr-*.md` into both `<skill install>/agents/` and `~/.claude/agents/`: it prunes `<skill install>/agents/*.md` and only `rr-*.md` in the shared `~/.claude/agents/`, copies, diffs each agent file in both places, and fails with `ERROR: sync diff mismatch: unexpected agents/<name>` (Makefile) or `ERROR: sync diff mismatch: agents/` (`build.ps1`) if the skill's `agents/` holds a name not in the source set (pinned by `AgentsAndReferences.test_sync_installs_and_compares_skill_agents_dir`).
 - `ORCHESTRATOR = "rr-orchestrator"`, `VERIFIER = "rr-verifier"`, `VERIFIER_MODEL = "sonnet"` are hard-coded. Renaming either agent means changing these constants and `test_check_agent_wiring.WORKERS`.
 - `test_module_tree.Cli` saves and restores `mt.IGNORED_DIRS` in `setUp`/`tearDown` because `--ignore` mutates it. Any new test calling `main()` with `--ignore` needs the same guard.
 

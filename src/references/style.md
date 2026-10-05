@@ -8,7 +8,7 @@ A reader must be able to act on one file alone, without opening another file in 
 
 Rules:
 
-- No cross-document links or pointers such as "see the parent README", "as described in `../core/CLAUDE.md`", "refer to the root docs".
+- No cross-document links or pointers such as "see the parent README", "as described in `../core/AGENTS.md`", "refer to the root docs".
 - Repeat the context a reader needs, even if it also appears elsewhere. Duplication across files is expected and correct here.
 - Referring to source files by path is fine and encouraged. Referring to other docs is not.
 - Define local terms, acronyms, and domain words in the file that uses them.

@@ -1,7 +1,7 @@
 # repo-remap
 
 Path: `.` (repo root)
-Purpose: Build, version, gate and test the Repo Remap Claude Code skill, which rebuilds a repo's docs bottom-up as self-contained `README.md` (people) and `CLAUDE.md` (Claude) files, run by an orchestrator and three subagents.
+Purpose: Build, version, gate and test the Repo Remap Claude Code skill, which rebuilds a repo's docs bottom-up as self-contained `README.md` (people) and `AGENTS.md` (agents) files, run by an orchestrator and three subagents.
 
 ## Scope
 
@@ -44,19 +44,19 @@ Spawn prompt lines: `SKILL PATH`, `REPO ROOT`, `MODULE`, `CHILD DOCS`, `SKIPPED 
 | --- | --- |
 | `src/SKILL.md` | Protocol: frontmatter, Orchestrator role assumption, Definitions, Workflow (Step 0, Pass 1 to 3), Sub-agent architecture, Dispatch rules (a) to (f), Reporting back, Checklist, References |
 | `src/agents/` | `rr-orchestrator.md`, `rr-leaf-writer.md`, `rr-parent-writer.md`, `rr-verifier.md`. Shipped (only `rr-*.md`) |
-| `src/references/` | `readme-format.md`, `claude-format.md`, `style.md`. Shipped (not the folder's `README.md`/`CLAUDE.md`) |
+| `src/references/` | `readme-format.md`, `agents-format.md`, `style.md`. Shipped (not the folder's `README.md`/`AGENTS.md`) |
 | `src/scripts/module_tree.py` | Shipped mapper: prints qualifying modules deepest first. Stdlib only, read-only |
 | `src/scripts/check_*.py` | Dev-only gates (5) |
 | `src/scripts/test_*.py` | Dev-only unittest suites (7, 102 tests) |
 | `README.md` | User docs. Carries gated badges and the gated "Ignored by default" paragraph. Shipped |
-| `VERSION` | Single source of truth for the version (`1.1.0`). Shipped |
+| `VERSION` | Single source of truth for the version (`1.2.0`). Shipped |
 | `TEST_COUNT` | Live unittest pass count (`102`) |
 | `CHANGELOG.md` | Keep a Changelog. Top entry must equal `VERSION`. No `[Unreleased]` section. Shipped |
 | `LICENSE` | Apache 2.0. Shipped |
 | `Makefile` | Unix/Linux/macOS build channel |
 | `build.ps1` | Windows PowerShell 7+ build channel |
 
-Ships: `SKILL.md`, `scripts/module_tree.py`, `agents/rr-*.md`, `references/*.md` minus `README.md` and `CLAUDE.md`, plus `README.md`, `LICENSE`, `CHANGELOG.md`, `VERSION`. Every `README.md`/`CLAUDE.md` under `src/` is a repo doc and never ships or syncs.
+Ships: `SKILL.md`, `scripts/module_tree.py`, `agents/rr-*.md`, `references/*.md` minus `README.md` and `AGENTS.md`, plus `README.md`, `LICENSE`, `CHANGELOG.md`, `VERSION`. Every `README.md`/`AGENTS.md` under `src/` is a repo doc and never ships or syncs.
 
 ## Public interface
 
@@ -95,7 +95,7 @@ Each `src/scripts/check_*.py` takes an optional root argument (default: repo roo
 
 ### Activation triggers
 
-"remap this repo", "the docs are out of date", "document every module", "generate CLAUDE.md files across the codebase", "re-onboard me to this project".
+"remap this repo", "the docs are out of date", "document every module", "generate AGENTS.md files across the codebase", "re-onboard me to this project".
 
 ## Data shapes
 
@@ -105,14 +105,14 @@ Each `src/scripts/check_*.py` takes an optional root argument (default: repo roo
 - README ignore paragraph: starts with `**Ignored by default**`, backticks every non-dotted `IGNORED_DIRS` entry and every `IGNORED_SUFFIXES` entry, contains `Dotted directories are skipped except `.github``, at least 10 backticked names, nothing unknown.
 - `SKILL.md` frontmatter: `name`, `description`, `version: __SKILL_VERSION__`, `released: __SKILL_DATE__`, `commit: __SKILL_COMMIT__`.
 - Agent frontmatter: `name` (equals file stem), `description`, `tools`, `model`, optional `disallowedTools`, `color`; orchestrator also `skills: [repo-remap]` and `tools: Agent(rr-leaf-writer, rr-parent-writer, rr-verifier), ...`.
-- Makefile file sets: `SCRIPT_FILES`, `AGENT_FILES` (`src/agents/rr-*.md`), `REFERENCE_FILES` (`src/references/*.md` minus `README.md`, `CLAUDE.md`), `DOC_FILES`. PowerShell: `$ScriptFiles`, `Get-AgentFiles`, `Get-ReferenceFiles`, `$DocFiles`.
+- Makefile file sets: `SCRIPT_FILES`, `AGENT_FILES` (`src/agents/rr-*.md`), `REFERENCE_FILES` (`src/references/*.md` minus `README.md`, `AGENTS.md`), `DOC_FILES`. PowerShell: `$ScriptFiles`, `Get-AgentFiles`, `Get-ReferenceFiles`, `$DocFiles`.
 
 ## Invariants and constraints
 
 - `src/SKILL.md` keeps `name:`, `description:` and the three `__SKILL_*__` placeholders. Never write a literal version there. After `make build`, `grep -c __SKILL_ build/repo-remap/SKILL.md` is 0.
 - Every `scripts/<x>.py`, `references/<x>.md` and `agents/rr-<x>.md` cited in `SKILL.md` must exist under `src/` (validate). Every agent or reference cited in `SKILL.md` or any `src/agents/*.md` must exist (`check_agent_wiring.py`).
 - Every non-orchestrator `rr-*.md` has `Agent` in `disallowedTools`. The orchestrator's `Agent(...)` list names exactly the other `rr-*.md` files. `rr-verifier` has `model: sonnet`.
-- Only `src/agents/rr-*.md` are agents; other `.md` there is ignored by build, validate and sync. References exclude the folder's `README.md` and `CLAUDE.md`. `test_build_channels.py` fails if either channel globs those folders unfiltered.
+- Only `src/agents/rr-*.md` are agents; other `.md` there is ignored by build, validate and sync. References exclude the folder's `README.md` and `AGENTS.md`. `test_build_channels.py` fails if either channel globs those folders unfiltered.
 - `SKILL.md` Definitions must match `module_tree.qualifying`: more than N direct files, or a qualifying descendant; root always qualifies.
 - `IGNORED_DIRS`, `IGNORED_FILES`, `IGNORED_SUFFIXES` in `module_tree.py` are restated in the README "Ignored by default" paragraph (gated, dirs and suffixes only) and in `SKILL.md` Definitions (not gated). The `SKILL.md` list is a subset and names "lockfile-only dirs", which the code does not implement.
 - `module_tree.py`: Python 3.8+, standard library only. No pip dependencies anywhere, no linters that need installing.
@@ -161,7 +161,7 @@ Add it to the lint list in the Makefile `lint` target and `$LintFiles` in `build
 
 ### Adding an agent or reference
 
-Agent: `src/agents/rr-<x>.md`, `name: rr-<x>`, keys `name`, `description`, `tools`, `model`, `disallowedTools: Agent` unless orchestrator; add it to the orchestrator's `Agent(...)` list. Reference: lowercase `[a-z0-9_-]` name, never `README.md`/`CLAUDE.md`; it ships automatically. Run `make validate`.
+Agent: `src/agents/rr-<x>.md`, `name: rr-<x>`, keys `name`, `description`, `tools`, `model`, `disallowedTools: Agent` unless orchestrator; add it to the orchestrator's `Agent(...)` list. Reference: lowercase `[a-z0-9_-]` name, never `README.md`/`AGENTS.md`; it ships automatically. Run `make validate`.
 
 ### Commit subjects
 
@@ -176,7 +176,7 @@ Bracketed area tag: `[skill] ...`, `[script] ...`, `[build] ...`, `[docs] ...`. 
 - [ ] README "Ignored by default" paragraph agrees with `IGNORED_DIRS` and `IGNORED_SUFFIXES`
 - [ ] `src/SKILL.md` has `name:`, `description:` and the three placeholders; cited scripts, references and agents exist
 - [ ] `SKILL.md` Definitions match the qualifying logic in `module_tree.py`
-- [ ] `make list` shows no `check_*.py`, `test_*.py`, or `README.md`/`CLAUDE.md` under `agents/` or `references/`
+- [ ] `make list` shows no `check_*.py`, `test_*.py`, or `README.md`/`AGENTS.md` under `agents/` or `references/`
 - [ ] `grep -c __SKILL_ build/repo-remap/SKILL.md` is 0 after `make build`
 - [ ] PowerShell claims verified by reading `build.ps1` and by `test_build_channels.py`, not by running it (no PowerShell in the usual dev environment). Say so when reporting
 
@@ -197,7 +197,7 @@ Fallback (no prune) if make and PowerShell are unavailable:
 mkdir -p ~/.claude/skills/repo-remap/scripts ~/.claude/skills/repo-remap/references ~/.claude/skills/repo-remap/agents ~/.claude/agents
 cp src/SKILL.md ~/.claude/skills/repo-remap/SKILL.md
 cp src/scripts/module_tree.py ~/.claude/skills/repo-remap/scripts/    # never check_*.py or test_*.py
-cp src/references/readme-format.md src/references/claude-format.md src/references/style.md ~/.claude/skills/repo-remap/references/
+cp src/references/readme-format.md src/references/agents-format.md src/references/style.md ~/.claude/skills/repo-remap/references/
 cp src/agents/rr-*.md ~/.claude/skills/repo-remap/agents/
 cp src/agents/rr-*.md ~/.claude/agents/
 cp README.md LICENSE CHANGELOG.md VERSION ~/.claude/skills/repo-remap/

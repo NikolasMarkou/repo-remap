@@ -17,11 +17,11 @@ AGENT_INSTALL_DIR := $(HOME)/.claude/agents
 SKILL_FILE := src/SKILL.md
 SCRIPT_FILES := src/scripts/module_tree.py
 DOC_FILES := README.md LICENSE CHANGELOG.md VERSION
-# src/agents/ and src/references/ also hold this repo's own per-module README.md and CLAUDE.md.
+# src/agents/ and src/references/ also hold this repo's own per-module README.md and AGENTS.md.
 # Those are repo docs, not skill content: agents are rr-*.md only, references exclude both docs.
 # Keep in lockstep with build.ps1's Get-ReferenceFiles and its rr-*.md agent filter.
 AGENT_FILES := $(sort $(wildcard src/agents/rr-*.md))
-REFERENCE_FILES := $(sort $(filter-out src/references/README.md src/references/CLAUDE.md,$(wildcard src/references/*.md)))
+REFERENCE_FILES := $(sort $(filter-out src/references/README.md src/references/AGENTS.md,$(wildcard src/references/*.md)))
 
 # Default target
 .PHONY: all
@@ -215,7 +215,7 @@ sync-skill:
 	  && diff -q VERSION $(SKILL_INSTALL_DIR)/VERSION \
 	  || { echo "ERROR: sync diff mismatch"; exit 1; }
 	@# references/ is compared file by file over REFERENCE_FILES, never `diff -rq` over the whole
-	@# dir: src/references/ also holds README.md and CLAUDE.md, which are repo docs and never ship.
+	@# dir: src/references/ also holds README.md and AGENTS.md, which are repo docs and never ship.
 	@for f in $(REFERENCE_FILES); do \
 		diff -q "$$f" "$(SKILL_INSTALL_DIR)/references/$$(basename "$$f")" || { echo "ERROR: sync diff mismatch"; exit 1; }; \
 	done

@@ -34,6 +34,8 @@ class IgnoreRules(unittest.TestCase):
 
     def test_doc_files_not_counted(self):
         self.assertFalse(mt.is_counted_file("README.md"))
+        self.assertFalse(mt.is_counted_file("AGENTS.md"))
+        # Legacy name stays ignored so mid-migration repos don't count it.
         self.assertFalse(mt.is_counted_file("CLAUDE.md"))
 
     def test_dotfiles_not_counted(self):
@@ -103,7 +105,7 @@ class Cli(unittest.TestCase):
             "docs_only": ["README.md"],
         })
         (self.root / "src/core/README.md").write_text("r")
-        (self.root / "src/core/CLAUDE.md").write_text("c")
+        (self.root / "src/core/AGENTS.md").write_text("c")
         self._saved = set(mt.IGNORED_DIRS)
 
     def tearDown(self):
@@ -122,7 +124,7 @@ class Cli(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertLess(out.index("-- depth 2 --"), out.index("-- depth 1 --"))
         self.assertLess(out.index("-- depth 1 --"), out.index("-- root --"))
-        self.assertIn("[README+CLAUDE]", out)
+        self.assertIn("[README+AGENTS]", out)
         self.assertIn("src/adapters/stripe", out)
         self.assertIn("parent of 1", out)
 

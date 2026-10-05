@@ -1,6 +1,6 @@
 # agents
 
-This folder (`src/agents/` in the repo-remap repository) holds the four Claude Code agent definitions that run a repo-remap job. Repo-remap is a Claude Code skill that rebuilds a repository's docs bottom-up as one `README.md` (for people) and one `CLAUDE.md` (for Claude) per qualifying module.
+This folder (`src/agents/` in the repo-remap repository) holds the four Claude Code agent definitions that run a repo-remap job. Repo-remap is a Claude Code skill that rebuilds a repository's docs bottom-up as one `README.md` (for people) and one `AGENTS.md` (for agents) per qualifying module.
 
 ## What it is for
 
@@ -31,7 +31,7 @@ flowchart TD
 ## Files
 
 - `rr-orchestrator.md` - plans the run, dispatches writers and verifiers, tracks module status, writes the final report. Never reads source or doc bodies.
-- `rr-leaf-writer.md` - writes `README.md` and `CLAUDE.md` for one leaf module from its source files.
+- `rr-leaf-writer.md` - writes `README.md` and `AGENTS.md` for one leaf module from its source files.
 - `rr-parent-writer.md` - writes the two docs for one parent module (or the repo root) from its children's docs, its own files and its non-qualifying subdirectories.
 - `rr-verifier.md` - read-only checker for one module's two docs. Replies `PASS` or `FAIL` plus up to 15 defect lines. Runs on the `sonnet` model.
 
@@ -61,10 +61,10 @@ MIN FILES: 2
 ## Things to know
 
 - Workers cannot spawn other agents: their frontmatter has `disallowedTools: Agent`. Only the orchestrator's `tools` line has `Agent(rr-leaf-writer, rr-parent-writer, rr-verifier)`.
-- Writers may only create or change `MODULE/README.md` and `MODULE/CLAUDE.md`. The parent writer never edits child docs; it reports errors it finds instead.
+- Writers may only create or change `MODULE/README.md` and `MODULE/AGENTS.md`. The parent writer never edits child docs; it reports errors it finds instead.
 - If the `rr-*` agent types are not installed, the orchestrator spawns `general-purpose` agents with the same prompt, prefixed by `Read <skill-path>/agents/rr-<name>.md and follow it.` If subagents are unavailable, it does the work in the same conversation.
-- Workers read three format files from the skill: `references/readme-format.md`, `references/claude-format.md`, `references/style.md`. Those rules take priority over the agent file on format.
+- Workers read three format files from the skill: `references/readme-format.md`, `references/agents-format.md`, `references/style.md`. Those rules take priority over the agent file on format.
 - `make sync-skill` deletes every `*.md` in `~/.claude/skills/repo-remap/agents/` before copying, because the skill owns that folder, then fails if any file there differs from its source or is not an `rr-*.md` from this folder. In `~/.claude/agents/` it deletes and replaces only `rr-*.md`, because that folder is shared with other skills, and compares each copied file with its source.
-- Only files named `rr-*.md` count as agents. `make build`, `make build-combined`, `make sync-skill` and the frontmatter check in `make validate` all pick up `rr-*.md` only (the same holds for `build.ps1` on Windows). This README and the `CLAUDE.md` next to it are docs for this repo: they are not packaged, not installed, and not checked for frontmatter.
+- Only files named `rr-*.md` count as agents. `make build`, `make build-combined`, `make sync-skill` and the frontmatter check in `make validate` all pick up `rr-*.md` only (the same holds for `build.ps1` on Windows). This README and the `AGENTS.md` next to it are docs for this repo: they are not packaged, not installed, and not checked for frontmatter.
 - `make validate` also runs `src/scripts/check_agent_wiring.py`, which scans every `*.md` here, docs included, for citations like `agents/rr-verifier.md` or `references/style.md`. A citation to a file that does not exist fails validation.
 - `src/scripts/check_agent_wiring.py` checks this folder: required frontmatter keys, `name` equal to the file name, workers barred from spawning, the orchestrator's `Agent(...)` list matching the files, every cited agent and reference existing, and the verifier model being `sonnet`.

@@ -3,7 +3,7 @@ name: rr-orchestrator
 description: >
   Orchestrates a repo-remap run: maps qualifying modules, dispatches leaf and
   parent writers bottom-up, and gates every module through the verifier.
-  Use when a repo's per-module README.md and CLAUDE.md files must be rebuilt.
+  Use when a repo's per-module README.md and AGENTS.md files must be rebuilt.
 
   Loaded two ways: (1) as the main thread via `claude --agent rr-orchestrator`;
   (2) read in-thread by a conversation that loaded the repo-remap skill. In
@@ -65,7 +65,7 @@ A leaf is a module with no qualifying descendants. Every other module is a paren
 
 For each parent:
 
-- `CHILD DOCS`: `<child>/README.md` and `<child>/CLAUDE.md` for each qualifying direct child module.
+- `CHILD DOCS`: `<child>/README.md` and `<child>/AGENTS.md` for each qualifying direct child module.
 - `SKIPPED DIRS`: direct child dirs that do not qualify and are not ignored. Find them with a directory listing (`ls -A`, or Glob on `<module>/*/`) and the mapper's ignore rules. Do not open files to decide.
 
 ## Spawn prompt contract

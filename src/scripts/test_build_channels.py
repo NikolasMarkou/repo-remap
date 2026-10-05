@@ -204,13 +204,13 @@ class AgentsAndReferences(unittest.TestCase):
 
 
 class RepoDocsExcluded(unittest.TestCase):
-    """src/agents/ and src/references/ hold repo docs (README.md, CLAUDE.md) that never ship."""
+    """src/agents/ and src/references/ hold repo docs (README.md, AGENTS.md) that never ship."""
 
     MK_REFS = ("REFERENCE_FILES := $(sort $(filter-out src/references/README.md "
-               "src/references/CLAUDE.md,$(wildcard src/references/*.md)))")
+               "src/references/AGENTS.md,$(wildcard src/references/*.md)))")
     MK_AGENTS = "AGENT_FILES := $(sort $(wildcard src/agents/rr-*.md))"
     PS_REFS = ("Get-ChildItem src/references -Filter *.md -File | "
-               "Where-Object { $_.Name -notin @('README.md','CLAUDE.md') }")
+               "Where-Object { $_.Name -notin @('README.md','AGENTS.md') }")
     PS_AGENTS = "Get-ChildItem src/agents -Filter rr-*.md -File"
     STEPS = (("build", "Invoke-Build"), ("build-combined", "Invoke-BuildCombined"),
              ("sync-skill", "Invoke-SyncSkill"))

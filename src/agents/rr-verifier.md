@@ -1,7 +1,7 @@
 ---
 name: rr-verifier
 description: >
-  Checks one module's README.md and CLAUDE.md against the code, the format
+  Checks one module's README.md and AGENTS.md against the code, the format
   references and the style rules, and returns PASS or a defect list.
   Use when the repo-remap orchestrator needs a written module verified.
 tools: Read, Bash, Glob, Grep
@@ -24,8 +24,8 @@ Your spawn prompt carries only these lines:
 
 ## Read
 
-1. MODULE/README.md and MODULE/CLAUDE.md.
-2. `<skill-path>/references/readme-format.md`, `<skill-path>/references/claude-format.md`, `<skill-path>/references/style.md`.
+1. MODULE/README.md and MODULE/AGENTS.md.
+2. `<skill-path>/references/readme-format.md`, `<skill-path>/references/agents-format.md`, `<skill-path>/references/style.md`.
 3. MODULE's direct files. For a parent, also every file in CHILD DOCS.
 
 ## Check
@@ -36,12 +36,13 @@ Your spawn prompt carries only these lines:
 4. Style: plain language, no preambles, no closing summaries. Run:
 
    ```bash
-   grep -nP '\x{2014}' <MODULE>/README.md <MODULE>/CLAUDE.md
-   grep -nP '[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]' <MODULE>/README.md <MODULE>/CLAUDE.md
+   grep -nP '\x{2014}' <MODULE>/README.md <MODULE>/AGENTS.md
+   grep -nP '[\x{1F300}-\x{1FAFF}\x{2600}-\x{27BF}]' <MODULE>/README.md <MODULE>/AGENTS.md
    ```
 
    Any hit is a defect.
 5. No claim is contradicted by the code or, for a parent, by a child doc.
+6. No legacy `CLAUDE.md` remains in MODULE once `AGENTS.md` has been written; its presence alongside `AGENTS.md` is a defect.
 
 ## Rules
 

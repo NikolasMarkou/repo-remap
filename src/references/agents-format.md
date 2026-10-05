@@ -1,8 +1,8 @@
-# CLAUDE.md format
+# AGENTS.md format
 
-Read by rr-leaf-writer and rr-parent-writer when writing a module CLAUDE.md, and by rr-verifier when checking one.
+Read by rr-leaf-writer and rr-parent-writer when writing a module AGENTS.md, and by rr-verifier when checking one.
 
-For Claude working in this module. Operational, specific, no motivation or sales copy. Target around 200 lines, hard ceiling 300 lines. If it will not fit, cut narrative and keep contracts, invariants, and paths.
+For agents working in this module. Operational, specific, no motivation or sales copy. Target around 200 lines, hard ceiling 300 lines. If it will not fit, cut narrative and keep contracts, invariants, and paths.
 
 ```markdown
 # <module name>

@@ -22,7 +22,9 @@ IGNORED_DIRS = {
     ".terraform", ".gradle", ".tox", ".cache", "site-packages", ".DS_Store",
 }
 
-IGNORED_FILES = {"README.md", "CLAUDE.md", ".DS_Store", ".gitkeep"}
+# Legacy "CLAUDE.md" stays ignored so repos mid-migration don't count the old
+# file as source; writers migrate its claims into AGENTS.md and delete it.
+IGNORED_FILES = {"README.md", "AGENTS.md", "CLAUDE.md", ".DS_Store", ".gitkeep"}
 
 IGNORED_SUFFIXES = (
     ".pyc", ".pyo", ".class", ".o", ".so", ".dll", ".dylib", ".log",
@@ -102,8 +104,8 @@ def main() -> int:
             has = []
             if os.path.exists(os.path.join(p, "README.md")):
                 has.append("README")
-            if os.path.exists(os.path.join(p, "CLAUDE.md")):
-                has.append("CLAUDE")
+            if os.path.exists(os.path.join(p, "AGENTS.md")):
+                has.append("AGENTS")
             existing = f" [{'+'.join(has)}]" if has else ""
             print(f"  {rel(p):<60} files={count:<4} {kind}{existing}")
 

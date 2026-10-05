@@ -75,12 +75,12 @@ function Substitute-Placeholders {
     Set-Content -Path $Path -Value $content -Encoding utf8 -NoNewline
 }
 
-# src/agents/ and src/references/ also hold this repo's own per-module README.md and CLAUDE.md.
+# src/agents/ and src/references/ also hold this repo's own per-module README.md and AGENTS.md.
 # Those are repo docs, not skill content: agents are rr-*.md only, references exclude both docs.
 # Keep in lockstep with the Makefile's AGENT_FILES and REFERENCE_FILES.
 function Get-ReferenceFiles {
     # Leading comma: return the array as one object so an empty or one-item set stays an array.
-    return ,@(Get-ChildItem src/references -Filter *.md -File | Where-Object { $_.Name -notin @('README.md','CLAUDE.md') } | Sort-Object Name)
+    return ,@(Get-ChildItem src/references -Filter *.md -File | Where-Object { $_.Name -notin @('README.md','AGENTS.md') } | Sort-Object Name)
 }
 
 function Get-AgentFiles {
@@ -295,7 +295,7 @@ function Invoke-SyncSkill {
         @("src/scripts/module_tree.py", (Join-Path $install "scripts/module_tree.py")),
         @("VERSION", (Join-Path $install "VERSION")))
     # references/: the installed file set must equal Get-ReferenceFiles (no extra name, none
-    # missing), then each file is compared. src/references/ README.md and CLAUDE.md never ship.
+    # missing), then each file is compared. src/references/ README.md and AGENTS.md never ship.
     $srcRefs = @(foreach ($f in (Get-ReferenceFiles)) { $f.Name } | Sort-Object)
     $dstRefs = @(Get-ChildItem (Join-Path $install "references") -File | ForEach-Object { $_.Name } | Sort-Object)
     if (($srcRefs -join "|") -ne ($dstRefs -join "|")) { Write-Host "ERROR: sync diff mismatch: references/" -ForegroundColor Red; exit 1 }
