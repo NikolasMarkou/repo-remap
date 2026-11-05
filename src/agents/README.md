@@ -10,15 +10,36 @@ A remap of a large repo is too much work for one conversation: reading every sou
 
 A "module" is a directory with more than N direct source files (N is `MIN FILES`, default 2), or with a qualifying subdirectory. The repo root always qualifies. A "leaf" is a module with no qualifying descendants; every other module is a "parent".
 
-```mermaid
-flowchart TD
-    O[rr-orchestrator] -->|Step 0| M[scripts/module_tree.py]
-    O -->|Pass 1, leaves deepest first| L[rr-leaf-writer]
-    O -->|Pass 2 and 3, parents up to root| P[rr-parent-writer]
-    L --> V[rr-verifier]
-    P --> V
-    V -->|PASS| O
-    V -->|FAIL, max 2 retries with FIX| O
+```text
+                        ┌───────────────────┐
+                        │ rr-orchestrator   │
+                        │ plans and tracks  │
+                        │ the run           │
+                        └───────────────────┘
+                                  │
+          ┌───────────────────────┴───────────────────────┐
+          ▼                       ▼                       ▼
+┌───────────────────┐   ┌───────────────────┐   ┌───────────────────┐
+│ Step 0            │   │ Pass 1            │   │ Pass 2 and 3      │
+│ module_tree.py    │   │ rr-leaf-writer    │   │ rr-parent-writer  │
+│ modules, deepest  │   │ leaves, deepest   │   │ parents, up to    │
+│ first             │   │ first, in parallel│   │ the root          │
+└───────────────────┘   └───────────────────┘   └───────────────────┘
+                                  │                       │
+                                  └───────────┬───────────┘
+                                              ▼
+                                    ┌───────────────────┐
+                                    │ rr-verifier       │
+                                    │ checks one module │
+                                    └───────────────────┘
+                                              │
+                            ┌─────────────────┴─────────────────┐
+                            │ PASS                              │ FAIL
+                            ▼                                   ▼
+                    to rr-orchestrator;               to rr-orchestrator with
+                    next module                       defect lines; the writer
+                                                      reruns, max 2 retries,
+                                                      then the module is open
 ```
 
 1. The orchestrator runs the mapper script to list qualifying modules, deepest first.

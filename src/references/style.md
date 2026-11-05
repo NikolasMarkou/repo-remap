@@ -22,6 +22,6 @@ These apply to every generated file:
 - No emojis.
 - No em dashes.
 - No preamble, no closing summary, no meta-commentary about the documentation itself.
-- Mermaid is allowed and encouraged for diagrams, flows, state machines, and protocols.
+- Diagrams: README.md uses ASCII box diagrams in a `text` fence, as defined in `readme-format.md`. AGENTS.md uses mermaid for diagrams, flows, state machines, and protocols. Never put a mermaid fence in a README.md or ASCII art in an AGENTS.md.
 - Do not invent behavior. If something is unclear from the code, say it is unclear or leave it out. Never guess at intent and present it as fact.
 - Override any of this only when the user explicitly asks.

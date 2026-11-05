@@ -1,7 +1,7 @@
 # Repo Remap
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Skill](https://img.shields.io/badge/Skill-v1.2.0-green.svg)](CHANGELOG.md)
+[![Skill](https://img.shields.io/badge/Skill-v1.3.0-green.svg)](CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-102%20passing-brightgreen.svg)](src/scripts/test_module_tree.py)
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](src/scripts/module_tree.py)
 [![Sponsored by Electi](https://img.shields.io/badge/Sponsored%20by-Electi-red.svg)](https://www.electiconsulting.com)
@@ -226,23 +226,60 @@ Skipped directories get no docs. Their contents are covered by the nearest quali
 
 Three passes over a tree that was ordered once, at the start, run by an orchestrator and three kinds of worker.
 
-```mermaid
-flowchart TD
-    U[User: remap this repo] --> S[SKILL.md]
-    S --> O[Main conversation assumes the rr-orchestrator role]
-    O -->|Step 0| M[scripts/module_tree.py: modules, deepest first]
-    M --> L[Pass 1: rr-leaf-writer per leaf, same depth in parallel]
-    L --> V1[rr-verifier per module]
-    V1 -- FAIL, max 2 retries with FIX --> L
-    V1 -- PASS --> P[Pass 2: rr-parent-writer once all children are done]
-    P --> V2[rr-verifier per module]
-    V2 -- FAIL, max 2 retries with FIX --> P
-    V2 -- PASS --> E{At repo root?}
-    E -- no --> P
-    E -- yes --> F[Pass 3 done: root README.md + AGENTS.md, report]
+```text
+              User: "remap this repo"
+                        │
+                        ▼
+              ┌───────────────────┐
+              │ SKILL.md          │
+              │ main conversation │
+              │ becomes the       │
+              │ rr-orchestrator   │
+              └───────────────────┘
+                        │ Step 0
+                        ▼
+          ┌──────────────────────────────┐
+          │ scripts/module_tree.py       │
+          │ qualifying modules,          │
+          │ deepest first                │
+          └──────────────────────────────┘
+                        │
+                        ▼
+          ┌──────────────────────────────┐
+          │ Pass 1: rr-leaf-writer       │
+          │ one per leaf, same depth     │
+          │ runs in parallel             │
+          └──────────────────────────────┘
+                        │
+                        ▼
+          ┌──────────────────────────────┐
+          │ rr-verifier, per module      │   FAIL: the writer runs again
+          │ PASS or defect list          │   with a FIX block, max 2
+          └──────────────────────────────┘   retries, then module is open
+                        │ PASS
+                        ▼
+          ┌──────────────────────────────┐
+          │ Pass 2: rr-parent-writer     │
+          │ once all children are done   │
+          └──────────────────────────────┘
+                        │
+                        ▼
+          ┌──────────────────────────────┐
+          │ rr-verifier, per module      │   FAIL: same retry rule
+          └──────────────────────────────┘
+                        │ PASS
+                        ▼
+                 At the repo root?
+                        │
+            ┌───────────┴───────────┐
+            │ no                    │ yes
+            ▼                       ▼
+   next level up,           Pass 3 done: root
+   repeat Pass 2            README.md and AGENTS.md,
+                            then the final report
 ```
 
-**No mermaid renderer? The same passes as a table**
+**The same passes as a table**
 
 | Step | Who | What happens | Inputs read |
 | --- | --- | --- | --- |
@@ -314,7 +351,7 @@ For a person who has never seen this code. Simple words, short sentences, concre
 | --- | --- |
 | Title and summary | What this is and what it does, in one or two sentences |
 | What it is for | The problem it solves, in plain language, 3 to 6 sentences |
-| How it works | A walkthrough of the main flow, with a mermaid diagram if that is clearer |
+| How it works | A walkthrough of the main flow, with an ASCII box diagram if that is clearer |
 | Files | One line per file, saying what it does |
 | How to use it | A minimal runnable example or the command to run, with real values |
 | Things to know | Gotchas, limits, assumptions, required environment |
@@ -327,7 +364,7 @@ For an agent working in this module. Operational and specific, with no motivatio
 | --- | --- |
 | Header | Module name, `Path:` from repo root, one-line purpose |
 | Scope | What lives here, and what explicitly does not |
-| Architecture | Structure, data flow, control flow, mermaid for state machines and pipelines |
+| Architecture | Structure, data flow, control flow, mermaid diagrams for state machines and pipelines |
 | Key files | Table of file, role, notes |
 | Public interface | Exported functions, classes, endpoints, CLI commands, events, with signatures, inputs, outputs, errors |
 | Data shapes | Structs, schemas, payloads, DB tables, config keys |
@@ -346,7 +383,7 @@ These apply to every generated file, and are overridden only when you explicitly
 - No emojis.
 - No em dashes.
 - No preamble, no closing summary, no meta-commentary about the documentation itself.
-- Mermaid is encouraged for diagrams, flows, state machines, and protocols.
+- Diagrams: README.md files use ASCII box diagrams in a `text` fence; AGENTS.md files use mermaid for diagrams, flows, state machines, and protocols.
 - Never invent behavior. If something is unclear from the code, say so or leave it out.
 
 **The completion checklist**

@@ -10,18 +10,35 @@ Repo Remap is a Claude Code skill. When a user says something like "remap this r
 
 A "module" is a directory with more than 2 direct source files (more than N with `--min-files N`), or with a qualifying directory somewhere below it. The repo root always qualifies. A "leaf" is a module with no qualifying module below it; every other module is a "parent".
 
-```mermaid
-flowchart TD
-    U[User: remap this repo] --> S[SKILL.md]
-    S --> O[main conversation takes the rr-orchestrator role]
-    O -->|Step 0| M[scripts/module_tree.py lists modules, deepest first]
-    O -->|Pass 1| L[rr-leaf-writer per leaf]
-    O -->|Pass 2 and 3| P[rr-parent-writer per parent, up to the root]
-    L --> V[rr-verifier checks each module]
-    P --> V
-    R[references/*.md format and style rules] --> L
-    R --> P
-    R --> V
+```text
+                      User: "remap this repo"
+                                  │
+                                  ▼
+                       ┌─────────────────────┐
+                       │ SKILL.md            │
+                       │ main conversation   │
+                       │ becomes the         │
+                       │ rr-orchestrator     │
+                       └─────────────────────┘
+                                  │
+          ┌───────────────────────┴───────────────────────┐
+          ▼                       ▼                       ▼
+┌───────────────────┐   ┌───────────────────┐   ┌───────────────────┐
+│ Step 0            │   │ Pass 1            │   │ Pass 2 and 3      │
+│ module_tree.py    │   │ rr-leaf-writer    │   │ rr-parent-writer  │
+│ lists modules,    │   │ one per leaf      │   │ one per parent,   │
+│ deepest first     │   │                   │   │ up to the root    │
+└───────────────────┘   └───────────────────┘   └───────────────────┘
+                                  │                       │
+                                  └───────────┬───────────┘
+                                              ▼
+                                    ┌───────────────────┐
+                                    │ rr-verifier       │
+                                    │ checks each module│
+                                    └───────────────────┘
+
+references/*.md (format and style rules) are read by rr-leaf-writer,
+rr-parent-writer and rr-verifier before they start.
 ```
 
 1. `SKILL.md` tells the main conversation to read `agents/rr-orchestrator.md` and act as the orchestrator.

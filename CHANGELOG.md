@@ -4,6 +4,16 @@ All notable changes to the Repo Remap project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.0] - 2026-11-05
+
+**Diagram convention.** Generated `README.md` files now draw diagrams as ASCII box diagrams; generated `AGENTS.md` files keep mermaid.
+
+### Changed
+
+- `references/readme-format.md` defines the ASCII box diagram style (text fence, box-drawing characters, arrows on every edge, T-junction fan-out, side channels, at most 78 characters wide) with an example; `references/agents-format.md` and `references/style.md` state the split by file type.
+- `rr-verifier` has a new check: a mermaid fence in a `README.md`, a non-mermaid diagram in an `AGENTS.md`, or an over-wide ASCII diagram line is a defect.
+- This repo's own `README.md` files (root, `src/`, `src/agents/`, `src/references/`, `src/scripts/`) now use ASCII box diagrams.
+
 ## [1.2.0] - 2026-10-05
 
 **AGENTS.md rename.** The generated agent doc is now `AGENTS.md` instead of `CLAUDE.md`, matching the multi-tool agent-instruction standard.

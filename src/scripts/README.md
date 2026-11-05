@@ -12,12 +12,36 @@ The other scripts protect the repo that builds the skill. A "gate" is a small sc
 
 `module_tree.py` walks a directory tree, counts the source files directly inside each directory, and marks a directory as worth documenting when it has more than 2 such files or contains a directory that is. The repo root always counts. It prints those directories deepest first, which is the order the skill writes docs in.
 
-```mermaid
-flowchart LR
-    A[os.walk the repo] --> B[drop ignored dirs, count direct files]
-    B --> C[mark qualifying dirs, deepest first]
-    C --> D[drop dirs with no files anywhere below]
-    D --> E[print by depth, then skipped dirs]
+```text
+        Repo root (path to walk)
+                │
+                ▼
+      ┌───────────────────────┐
+      │ os.walk the repo      │
+      └───────────────────────┘
+                │
+                ▼
+      ┌───────────────────────┐
+      │ drop ignored dirs     │
+      │ count direct files    │
+      └───────────────────────┘
+                │
+                ▼
+      ┌───────────────────────┐
+      │ mark qualifying dirs  │
+      │ (> N files, or a      │
+      │ qualifying child)     │
+      └───────────────────────┘
+                │
+                ▼
+      ┌───────────────────────┐
+      │ drop dirs with no     │
+      │ files anywhere below  │
+      └───────────────────────┘
+                │
+                ▼
+      print by depth, deepest first,
+      then the skipped dirs
 ```
 
 Each `check_*.py` gate reads a few files at the repo root, compares them, prints `PASS ...` or `FAIL [tag] ...`, and exits 0 (pass) or 1 (fail). Each `test_*.py` file is a standard `unittest` suite.

@@ -8,20 +8,24 @@ The skill splits its work across subagents: `rr-leaf-writer` writes docs for lea
 
 ## How it works
 
-```mermaid
-flowchart LR
-    RF[readme-format.md] --> LW[rr-leaf-writer]
-    CF[agents-format.md] --> LW
-    ST[style.md] --> LW
-    RF --> PW[rr-parent-writer]
-    CF --> PW
-    ST --> PW
-    RF --> V[rr-verifier]
-    CF --> V
-    ST --> V
-    LW --> D[MODULE/README.md and MODULE/AGENTS.md]
-    PW --> D
-    V -->|PASS or defect list| D
+```text
+ readme-format.md         agents-format.md            style.md
+          │                       │                       │
+          ├───────────────────────┼───────────────────────┤
+          ▼                       ▼                       ▼
+┌───────────────────┐   ┌───────────────────┐   ┌───────────────────┐
+│ rr-leaf-writer    │   │ rr-parent-writer  │   │ rr-verifier       │
+│ leaf modules      │   │ parent modules    │   │ every module      │
+└───────────────────┘   └───────────────────┘   └───────────────────┘
+          │                       │                       │
+          ▼                       ▼                       │
+┌──────────────────────────────────────────────┐          │
+│ MODULE/README.md and MODULE/AGENTS.md        │◄─────────┘
+└──────────────────────────────────────────────┘  checks the two docs,
+                                                  replies PASS or
+                                                  a defect list
+
+All three rule files are read fully by each of the three agents first.
 ```
 
 Each agent is told to read all three files fully before it starts. The files say they override anything else in the agent's instructions on matters of format.
@@ -30,7 +34,7 @@ Each agent is told to read all three files fully before it starts. The files say
 
 - `readme-format.md` - template for a module `README.md`: a one or two sentence intro, then "What it is for", "How it works", "Files", "How to use it", "Things to know". Written for a person new to the code. Empty sections are dropped and length follows the module.
 - `agents-format.md` - template for a module `AGENTS.md`: title, `Path:` and `Purpose:` lines, then Scope, Architecture, Key files, Public interface, Data shapes, Invariants and constraints, Dependencies, Failure modes, Working here. Target about 200 lines, hard ceiling 300.
-- `style.md` - self-containment rules (each doc must work alone, no pointers to other docs, repeat needed context, define local terms) and style rules (plain language, no emojis, no em dashes, no preamble or closing summary, Mermaid allowed, never invent behavior).
+- `style.md` - self-containment rules (each doc must work alone, no pointers to other docs, repeat needed context, define local terms) and style rules (plain language, no emojis, no em dashes, no preamble or closing summary, ASCII box diagrams in README.md and mermaid in AGENTS.md, never invent behavior).
 
 ## How to use it
 

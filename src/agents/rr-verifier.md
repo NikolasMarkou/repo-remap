@@ -43,6 +43,11 @@ Your spawn prompt carries only these lines:
    Any hit is a defect.
 5. No claim is contradicted by the code or, for a parent, by a child doc.
 6. No legacy `CLAUDE.md` remains in MODULE once `AGENTS.md` has been written; its presence alongside `AGENTS.md` is a defect.
+7. Diagram format: a `mermaid` fence in README.md is a defect; a diagram in AGENTS.md that is not a `mermaid` fence is a defect; a README.md ASCII diagram line wider than 78 characters is a defect. Check with:
+
+   ```bash
+   grep -n '```mermaid' <MODULE>/README.md
+   ```
 
 ## Rules
 

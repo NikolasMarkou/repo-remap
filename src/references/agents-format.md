@@ -16,7 +16,7 @@ Purpose: <one line>
 
 ## Architecture
 
-<Structure, data flow, control flow. Mermaid for state machines, protocols, pipelines.>
+<Structure, data flow, control flow. Diagrams are mermaid in a `mermaid` fence (flowchart, stateDiagram-v2, sequenceDiagram), never ASCII art. Use them for state machines, protocols, pipelines.>
 
 ## Key files
 

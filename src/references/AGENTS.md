@@ -33,7 +33,7 @@ The writer agents are told the references override anything in the agent file on
 | --- | --- | --- |
 | `readme-format.md` | Module `README.md` template | Sections: intro, What it is for (3 to 6 sentences), How it works, Files (`- \`name.ext\` - one line`), How to use it, Things to know. Adapt headings, drop empty sections, length follows module |
 | `agents-format.md` | Module `AGENTS.md` template | `# <module name>`, `Path:`, `Purpose:`, then Scope, Architecture, Key files (File/Role/Notes table), Public interface, Data shapes, Invariants and constraints, Dependencies, Failure modes, Working here. Target about 200 lines, hard ceiling 300; cut narrative first, keep contracts, invariants, paths |
-| `style.md` | Self-containment and style rules | No cross-doc links or "see parent" pointers; source paths are fine; repeat context; define local terms; first lines state what the module is and where it sits. Plain language, no emojis, no em dashes, no preamble, closing summary or meta-commentary, Mermaid allowed, never invent behavior. Overridable only by explicit user request |
+| `style.md` | Self-containment and style rules | No cross-doc links or "see parent" pointers; source paths are fine; repeat context; define local terms; first lines state what the module is and where it sits. Plain language, no emojis, no em dashes, no preamble, closing summary or meta-commentary, README.md diagrams ASCII and AGENTS.md diagrams mermaid, never invent behavior. Overridable only by explicit user request |
 
 ## Public interface
 
