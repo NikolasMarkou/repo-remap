@@ -2,7 +2,13 @@
 
 Read by rr-leaf-writer and rr-parent-writer when writing a module AGENTS.md, and by rr-verifier when checking one.
 
-For agents working in this module. Operational, specific, no motivation or sales copy. Target around 200 lines, hard ceiling 300 lines. If it will not fit, cut narrative and keep contracts, invariants, and paths.
+For agents working in this module. Operational, specific, no motivation or sales copy. Target around 200 lines, hard ceiling 300 lines. Fenced diagram blocks (the `mermaid` fence and its contents) do not count toward either number. Count the rest with:
+
+```bash
+awk '/^```(mermaid|text)/{d=1;next} d&&/^```/{d=0;next} !d' AGENTS.md | wc -l
+```
+
+If it will not fit, cut narrative and keep contracts, invariants, and paths.
 
 ```markdown
 # <module name>

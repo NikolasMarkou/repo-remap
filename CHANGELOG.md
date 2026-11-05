@@ -4,6 +4,16 @@ All notable changes to the Repo Remap project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.1] - 2026-11-05
+
+**Line budgets.** Fenced diagrams no longer count toward the `AGENTS.md` length budget.
+
+### Changed
+
+- `references/agents-format.md` says the 200-line target and 300-line ceiling exclude fenced diagram blocks and gives an `awk` command that counts the rest.
+- `rr-verifier` has a new length check that flags only more than 300 counted lines, never diagram lines.
+- `SKILL.md` checklist and the repo docs restate the budget with the diagram exemption.
+
 ## [1.3.0] - 2026-11-05
 
 **Diagram convention.** Generated `README.md` files now draw diagrams as ASCII box diagrams; generated `AGENTS.md` files keep mermaid.

@@ -139,7 +139,7 @@ Before finishing, verify:
 - Every module has a `PASS` from `rr-verifier`, or is listed as open.
 - No parent was written before its children, and no ancestor of a rewritten module was left stale.
 - No file references another doc file.
-- Every `AGENTS.md` is under 300 lines.
+- Every `AGENTS.md` is under 300 lines, not counting fenced diagram blocks.
 - Parents summarize children rather than duplicating their internals.
 - Skipped directories are covered by their nearest documented ancestor.
 - No emojis, no em dashes, no preambles anywhere.
@@ -147,7 +147,7 @@ Before finishing, verify:
 ## References
 
 - `references/readme-format.md`: template and rules for a module `README.md`.
-- `references/agents-format.md`: template and rules for a module `AGENTS.md`, including the 300-line ceiling.
+- `references/agents-format.md`: template and rules for a module `AGENTS.md`, including the 300-line ceiling (fenced diagram blocks do not count).
 - `references/style.md`: self-containment rules and style constraints for every generated file.
 - `agents/rr-orchestrator.md`: the orchestrator role this thread assumes.
 - `agents/rr-leaf-writer.md`: Pass 1 writer for one leaf module.

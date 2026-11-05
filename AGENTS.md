@@ -49,7 +49,7 @@ Spawn prompt lines: `SKILL PATH`, `REPO ROOT`, `MODULE`, `CHILD DOCS`, `SKIPPED 
 | `src/scripts/check_*.py` | Dev-only gates (5) |
 | `src/scripts/test_*.py` | Dev-only unittest suites (7, 102 tests) |
 | `README.md` | User docs. Carries gated badges and the gated "Ignored by default" paragraph. Shipped |
-| `VERSION` | Single source of truth for the version (`1.3.0`). Shipped |
+| `VERSION` | Single source of truth for the version (`1.3.1`). Shipped |
 | `TEST_COUNT` | Live unittest pass count (`102`) |
 | `CHANGELOG.md` | Keep a Changelog. Top entry must equal `VERSION`. No `[Unreleased]` section. Shipped |
 | `LICENSE` | Apache 2.0. Shipped |

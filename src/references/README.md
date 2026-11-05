@@ -33,7 +33,7 @@ Each agent is told to read all three files fully before it starts. The files say
 ## Files
 
 - `readme-format.md` - template for a module `README.md`: a one or two sentence intro, then "What it is for", "How it works", "Files", "How to use it", "Things to know". Written for a person new to the code. Empty sections are dropped and length follows the module.
-- `agents-format.md` - template for a module `AGENTS.md`: title, `Path:` and `Purpose:` lines, then Scope, Architecture, Key files, Public interface, Data shapes, Invariants and constraints, Dependencies, Failure modes, Working here. Target about 200 lines, hard ceiling 300.
+- `agents-format.md` - template for a module `AGENTS.md`: title, `Path:` and `Purpose:` lines, then Scope, Architecture, Key files, Public interface, Data shapes, Invariants and constraints, Dependencies, Failure modes, Working here. Target about 200 lines, hard ceiling 300, not counting fenced diagram blocks.
 - `style.md` - self-containment rules (each doc must work alone, no pointers to other docs, repeat needed context, define local terms) and style rules (plain language, no emojis, no em dashes, no preamble or closing summary, ASCII box diagrams in README.md and mermaid in AGENTS.md, never invent behavior).
 
 ## How to use it

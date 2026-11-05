@@ -54,7 +54,7 @@ Module status: `pending`, `written`, `verified`, `open`.
 | `agents/rr-parent-writer.md` | Both docs for one parent or root, from child docs | `disallowedTools: Agent`, `model: inherit`. Reads SKIPPED DIRS files directly; never edits child docs |
 | `agents/rr-verifier.md` | Read-only check of one module | `disallowedTools: Agent, Write, Edit`, `model: sonnet` |
 | `references/readme-format.md` | `README.md` template | Intro, What it is for, How it works, Files, How to use it, Things to know |
-| `references/agents-format.md` | `AGENTS.md` template | `Path:`, `Purpose:`, Scope ... Working here. Target 200 lines, ceiling 300 |
+| `references/agents-format.md` | `AGENTS.md` template | `Path:`, `Purpose:`, Scope ... Working here. Target 200 lines, ceiling 300, fenced diagrams not counted |
 | `references/style.md` | Self-containment and style rules | No cross-doc pointers, no emojis, no em dashes, no preamble or closing summary, never invent behavior |
 | `scripts/module_tree.py` | Module mapper CLI | Shipped. Stdlib only, read-only |
 | `scripts/check_*.py` | 5 gates | Dev-only. `check_test_count.py` runs under `test`; the other 4 under `validate` |

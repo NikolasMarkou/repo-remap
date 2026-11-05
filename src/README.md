@@ -51,7 +51,7 @@ rr-parent-writer and rr-verifier before they start.
 
 - `SKILL.md` - the protocol Claude reads: definitions, the passes, agent roles, dispatch rules (spawn prompt contract, replies, parallelism, retries, fallbacks), reporting and a checklist. Its frontmatter holds build placeholders.
 - `agents/` - four Claude Code subagent definitions: `rr-orchestrator.md` (plans and tracks the run, never reads code), `rr-leaf-writer.md` (docs for one leaf from its source), `rr-parent-writer.md` (docs for one parent from its children's docs), `rr-verifier.md` (read-only checker, runs on the `sonnet` model).
-- `references/` - three rule files every writer and the verifier read: `readme-format.md`, `agents-format.md` (target about 200 lines, ceiling 300), `style.md` (self-containment and style rules).
+- `references/` - three rule files every writer and the verifier read: `readme-format.md`, `agents-format.md` (target about 200 lines, ceiling 300, diagrams not counted), `style.md` (self-containment and style rules).
 - `scripts/` - Python, standard library only. `module_tree.py` is the mapper that ships. The `check_*.py` gates and `test_*.py` suites (102 tests) keep the repo consistent and never ship.
 
 ## How to use it

@@ -1,7 +1,7 @@
 # Repo Remap
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Skill](https://img.shields.io/badge/Skill-v1.3.0-green.svg)](CHANGELOG.md)
+[![Skill](https://img.shields.io/badge/Skill-v1.3.1-green.svg)](CHANGELOG.md)
 [![Tests](https://img.shields.io/badge/tests-102%20passing-brightgreen.svg)](src/scripts/test_module_tree.py)
 [![Python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](src/scripts/module_tree.py)
 [![Sponsored by Electi](https://img.shields.io/badge/Sponsored%20by-Electi-red.svg)](https://www.electiconsulting.com)
@@ -198,7 +198,7 @@ The ordering rule that enforces this is blunt: never document a parent before it
 
 A README that satisfies a new engineer is bad context for an agent, and a file dense enough to be good agent context is unreadable for a person. Most projects compromise and produce one document that serves neither.
 
-Repo Remap refuses the compromise. `README.md` explains the problem the module solves in plain language and shows how to run it. `AGENTS.md` carries the path from repo root, the public interface with signatures, data shapes, invariants and ordering constraints, dependencies, failure modes, and the concrete rules for changing the code. Target around 200 lines, hard ceiling 300. When it will not fit, narrative gets cut and contracts stay.
+Repo Remap refuses the compromise. `README.md` explains the problem the module solves in plain language and shows how to run it. `AGENTS.md` carries the path from repo root, the public interface with signatures, data shapes, invariants and ordering constraints, dependencies, failure modes, and the concrete rules for changing the code. Target around 200 lines, hard ceiling 300, not counting diagrams. When it will not fit, narrative gets cut and contracts stay.
 
 ### 3. Self-containment over cross-references
 
@@ -392,7 +392,7 @@ These apply to every generated file, and are overridden only when you explicitly
 - [ ] Every module has a `PASS` from `rr-verifier`, or is listed as open
 - [ ] No parent was written before its children, and no ancestor of a rewritten module was left stale
 - [ ] No file references another doc file
-- [ ] Every `AGENTS.md` is under 300 lines
+- [ ] Every `AGENTS.md` is under 300 lines, not counting diagrams
 - [ ] Parents summarize children rather than duplicating their internals
 - [ ] Skipped directories are covered by their nearest documented ancestor
 - [ ] No emojis, no em dashes, no preambles anywhere
@@ -409,7 +409,7 @@ These apply to every generated file, and are overridden only when you explicitly
 
 **Why no links between docs?** Because a file that points elsewhere is useless to whoever loaded only that file. Self-containment costs duplication and buys the ability to act on any single file.
 
-**Will my `AGENTS.md` files get huge?** No. Target is around 200 lines with a hard ceiling of 300. Over the ceiling, narrative is cut and contracts, invariants, and paths are kept.
+**Will my `AGENTS.md` files get huge?** No. Target is around 200 lines with a hard ceiling of 300, and fenced diagrams do not count toward either number. Over the ceiling, narrative is cut and contracts, invariants, and paths are kept.
 
 **What counts as a module?** Any directory with source files, after ignored paths are removed, that has more than 2 direct files or has a qualifying descendant. The root always counts.
 
@@ -442,7 +442,7 @@ repo-remap/
     │   └── rr-verifier.md              # read-only check of one module (sonnet)
     ├── references/
     │   ├── readme-format.md            # README.md template
-    │   ├── agents-format.md            # AGENTS.md template, 200-line target, 300 ceiling
+    │   ├── agents-format.md            # AGENTS.md template, 200-line target, 300 ceiling (diagrams excluded)
     │   └── style.md                    # self-containment and style rules
     └── scripts/
         ├── module_tree.py              # module mapper, prints processing order deepest first

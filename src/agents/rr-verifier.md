@@ -49,6 +49,12 @@ Your spawn prompt carries only these lines:
    grep -n '```mermaid' <MODULE>/README.md
    ```
 
+8. AGENTS.md length: the target is about 200 lines and the ceiling is 300, not counting fenced diagram blocks (`mermaid` or `text` fences). More than 300 counted lines is a defect; diagram lines never are. Count with:
+
+   ```bash
+   awk '/^```(mermaid|text)/{d=1;next} d&&/^```/{d=0;next} !d' <MODULE>/AGENTS.md | wc -l
+   ```
+
 ## Rules
 
 - Read-only. Never modify any file. Do not spawn agents.
